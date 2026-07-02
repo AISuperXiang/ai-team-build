@@ -1,0 +1,1452 @@
+{
+  "skill": {
+    "id": "stock-trading-team",
+    "name": "A Stock Trading Research Team Skill",
+    "description": "A-share market research, strategy review, risk control, and trading-plan workflow skill.",
+    "version": "0.1.0",
+    "domain": "A 股投资研究与交易计划辅助",
+    "targetUsers": [
+      "需要结构化分析 A 股市场和个股的 Agent 用户",
+      "需要风险控制和交易复盘框架的个人研究者"
+    ],
+    "primaryValue": "把市场环境、板块题材、个股量价、策略假设、仓位风险和复盘纪律沉淀为可验证的研究流程。"
+  },
+  "commands": {
+    "prefix": "/stock-team",
+    "items": [
+      {
+        "name": "intake",
+        "workflow": "research-intake",
+        "description": "梳理研究目标、标的、周期、风险偏好和数据来源。",
+        "requiredInput": "研究目标、标的或市场问题",
+        "defaultOutput": "研究简报和信息缺口"
+      },
+      {
+        "name": "analyze",
+        "workflow": "market-stock-analysis",
+        "description": "分析指数环境、板块轮动、题材和个股量价。",
+        "requiredInput": "指数、板块、个股或题材上下文",
+        "defaultOutput": "市场与个股分析报告"
+      },
+      {
+        "name": "strategy",
+        "workflow": "strategy-plan",
+        "description": "形成策略假设、适用场景、触发条件和失效条件。",
+        "requiredInput": "分析结论和风险偏好",
+        "defaultOutput": "策略计划和执行检查表"
+      },
+      {
+        "name": "risk",
+        "workflow": "risk-control",
+        "description": "评估仓位、止损、回撤、流动性和黑名单风险。",
+        "requiredInput": "标的、仓位假设、策略计划",
+        "defaultOutput": "风险评估和风控建议"
+      },
+      {
+        "name": "review",
+        "workflow": "strategy-review",
+        "description": "复核证据、置信度、冲突信号和禁止性承诺。",
+        "requiredInput": "分析报告、策略计划、风险评估",
+        "defaultOutput": "策略复核结论"
+      },
+      {
+        "name": "deliver",
+        "workflow": "research-delivery",
+        "description": "汇总研究结论、证据、风险、失效条件和复盘计划。",
+        "requiredInput": "研究上下文",
+        "defaultOutput": "研究交付摘要"
+      }
+    ]
+  },
+  "members": [
+    {
+      "id": "strategy-lead",
+      "name": "策略负责人",
+      "role": "strategy",
+      "when_to_load": [
+        "策略假设",
+        "交易计划",
+        "适用行情判断"
+      ],
+      "primary_outputs": [
+        "strategy-plan",
+        "execution-checklist"
+      ],
+      "quality_gates": [
+        "strategy-gate",
+        "risk-gate"
+      ],
+      "responsibilities": [
+        "定义策略假设、适用行情、触发条件和失效条件。",
+        "把分析结论转成可复核的交易计划框架。"
+      ],
+      "inputs": [
+        "市场分析",
+        "个股分析",
+        "风险偏好"
+      ],
+      "outputs": [
+        "策略计划",
+        "执行检查表",
+        "失效条件"
+      ],
+      "workingLogic": [
+        "先确认市场环境是否支持策略。",
+        "定义入场观察条件、退出条件和禁止场景。",
+        "把策略置信度和失效条件写清楚。"
+      ],
+      "checklist": [
+        "策略是否说明适用行情。",
+        "是否有触发条件和失效条件。",
+        "是否避免确定性收益承诺。"
+      ],
+      "escalation": [
+        "策略与风险经理结论冲突。",
+        "缺少关键数据来源。"
+      ],
+      "doNotDo": [
+        "不承诺收益。",
+        "不输出确定性买卖指令。"
+      ],
+      "externalSkills": [
+        "finance-data-analysis"
+      ]
+    },
+    {
+      "id": "market-researcher",
+      "name": "市场研究员",
+      "role": "market-research",
+      "when_to_load": [
+        "指数环境",
+        "板块轮动",
+        "政策题材"
+      ],
+      "primary_outputs": [
+        "market-brief",
+        "theme-map"
+      ],
+      "quality_gates": [
+        "evidence-gate"
+      ],
+      "responsibilities": [
+        "分析指数环境、成交量、板块轮动和题材强度。",
+        "标注数据时效和宏观不确定性。"
+      ],
+      "inputs": [
+        "指数走势",
+        "板块数据",
+        "新闻和政策线索"
+      ],
+      "outputs": [
+        "市场环境判断",
+        "板块和题材观察",
+        "风险提示"
+      ],
+      "workingLogic": [
+        "先确认市场风险偏好和流动性。",
+        "再识别强弱板块和题材持续性。",
+        "最后输出支持或反对策略的环境证据。"
+      ],
+      "checklist": [
+        "数据来源是否说明。",
+        "题材持续性是否区分事实和假设。",
+        "是否说明市场环境失效条件。"
+      ],
+      "escalation": [
+        "关键数据过期。",
+        "政策解读存在重大不确定性。"
+      ],
+      "doNotDo": [
+        "不把消息传闻当作确定事实。",
+        "不忽略市场整体风险。"
+      ],
+      "externalSkills": [
+        "finance-data-analysis"
+      ]
+    },
+    {
+      "id": "stock-analyst",
+      "name": "个股分析师",
+      "role": "stock-analysis",
+      "when_to_load": [
+        "个股研究",
+        "量价形态",
+        "事件催化"
+      ],
+      "primary_outputs": [
+        "stock-analysis",
+        "signal-summary"
+      ],
+      "quality_gates": [
+        "evidence-gate",
+        "strategy-gate"
+      ],
+      "responsibilities": [
+        "分析个股基本面线索、技术形态、量价关系和事件催化。",
+        "标注多空证据、冲突信号和失效条件。"
+      ],
+      "inputs": [
+        "股票代码",
+        "行情数据",
+        "公告和事件"
+      ],
+      "outputs": [
+        "个股分析报告",
+        "多空证据",
+        "失效条件"
+      ],
+      "workingLogic": [
+        "先确认标的和时间周期。",
+        "分析趋势、成交量、关键位置和催化因素。",
+        "输出证据、反证和置信度。"
+      ],
+      "checklist": [
+        "是否区分短线和中线周期。",
+        "是否列出反向证据。",
+        "是否说明数据时效。"
+      ],
+      "escalation": [
+        "标的数据不足。",
+        "基本面和技术面结论冲突。"
+      ],
+      "doNotDo": [
+        "不只基于单一指标下结论。",
+        "不输出保证上涨或保证盈利。"
+      ],
+      "externalSkills": [
+        "finance-data-analysis"
+      ]
+    },
+    {
+      "id": "risk-manager",
+      "name": "风险经理",
+      "role": "risk",
+      "when_to_load": [
+        "仓位控制",
+        "止损条件",
+        "回撤风险"
+      ],
+      "primary_outputs": [
+        "risk-register",
+        "position-plan"
+      ],
+      "quality_gates": [
+        "risk-gate",
+        "disclaimer-gate"
+      ],
+      "responsibilities": [
+        "评估仓位、止损、回撤、流动性、黑名单和极端情况。",
+        "阻断缺少风险边界或确定性承诺的输出。"
+      ],
+      "inputs": [
+        "策略计划",
+        "个股波动",
+        "用户风险偏好"
+      ],
+      "outputs": [
+        "风险台账",
+        "仓位建议框架",
+        "止损和失效条件"
+      ],
+      "workingLogic": [
+        "识别最大损失来源。",
+        "定义仓位上限、止损条件和暂停条件。",
+        "检查是否存在禁止性承诺。"
+      ],
+      "checklist": [
+        "是否说明仓位风险。",
+        "是否说明止损条件。",
+        "是否包含免责声明。"
+      ],
+      "escalation": [
+        "用户要求确定性买卖点。",
+        "策略缺少止损或失效条件。"
+      ],
+      "doNotDo": [
+        "不替用户承担投资决策。",
+        "不删除风险提示。"
+      ],
+      "externalSkills": []
+    },
+    {
+      "id": "data-analyst",
+      "name": "数据分析师",
+      "role": "data",
+      "when_to_load": [
+        "数据来源",
+        "指标计算",
+        "回测证据"
+      ],
+      "primary_outputs": [
+        "data-note",
+        "evidence-index"
+      ],
+      "quality_gates": [
+        "evidence-gate",
+        "data-quality-gate"
+      ],
+      "responsibilities": [
+        "定义数据来源、指标口径、时效性和缺失风险。",
+        "整理证据索引和可复核数据说明。"
+      ],
+      "inputs": [
+        "行情数据",
+        "指标定义",
+        "分析问题"
+      ],
+      "outputs": [
+        "数据说明",
+        "证据索引",
+        "数据质量风险"
+      ],
+      "workingLogic": [
+        "确认数据来源和更新时间。",
+        "说明指标口径和计算假设。",
+        "标注缺失、延迟和偏差。"
+      ],
+      "checklist": [
+        "是否说明数据来源。",
+        "是否说明数据时效。",
+        "是否说明指标口径。"
+      ],
+      "escalation": [
+        "关键数据不可获得。",
+        "数据存在明显异常。"
+      ],
+      "doNotDo": [
+        "不伪造行情数据。",
+        "不隐藏数据缺失。"
+      ],
+      "externalSkills": [
+        "finance-data-analysis"
+      ]
+    },
+    {
+      "id": "execution-coach",
+      "name": "执行教练",
+      "role": "execution",
+      "when_to_load": [
+        "交易计划",
+        "纪律检查",
+        "复盘"
+      ],
+      "primary_outputs": [
+        "execution-plan",
+        "review-checklist"
+      ],
+      "quality_gates": [
+        "discipline-gate"
+      ],
+      "responsibilities": [
+        "把策略转成观察清单、执行纪律和复盘问题。",
+        "提醒用户不要追涨杀跌或违背风险边界。"
+      ],
+      "inputs": [
+        "策略计划",
+        "风险约束",
+        "执行周期"
+      ],
+      "outputs": [
+        "执行检查表",
+        "复盘问题",
+        "纪律提醒"
+      ],
+      "workingLogic": [
+        "拆解执行前检查、执行中观察和执行后复盘。",
+        "标注违反纪律时的停止条件。",
+        "输出非指令式的行动框架。"
+      ],
+      "checklist": [
+        "是否有执行前检查。",
+        "是否有停止条件。",
+        "是否有复盘问题。"
+      ],
+      "escalation": [
+        "用户要求直接下单指令。",
+        "用户忽略止损或仓位限制。"
+      ],
+      "doNotDo": [
+        "不代替用户下单。",
+        "不鼓励加杠杆或满仓。"
+      ],
+      "externalSkills": []
+    },
+    {
+      "id": "delivery-manager",
+      "name": "交付经理",
+      "role": "delivery",
+      "when_to_load": [
+        "流程编排",
+        "证据汇总",
+        "最终交付"
+      ],
+      "primary_outputs": [
+        "workflow-status",
+        "delivery-summary"
+      ],
+      "quality_gates": [
+        "delivery-gate",
+        "evidence-gate"
+      ],
+      "responsibilities": [
+        "维护流程状态、证据索引、风险和最终摘要。",
+        "汇总多角色结论并处理冲突。"
+      ],
+      "inputs": [
+        "各角色输出",
+        "证据和风险",
+        "用户目标"
+      ],
+      "outputs": [
+        "状态板",
+        "交付摘要",
+        "未解决风险"
+      ],
+      "workingLogic": [
+        "先选择主工作流。",
+        "再按阶段检查角色产出和门禁。",
+        "最终输出证据、风险、置信度和需决策项。"
+      ],
+      "checklist": [
+        "是否有证据索引。",
+        "是否有风险声明。",
+        "是否有置信度和失效条件。"
+      ],
+      "escalation": [
+        "角色结论冲突。",
+        "风险门禁失败。"
+      ],
+      "doNotDo": [
+        "不隐藏风险。",
+        "不把研究结论包装成投资建议。"
+      ],
+      "externalSkills": []
+    }
+  ],
+  "workflows": [
+    {
+      "id": "research-intake",
+      "title": "研究输入梳理",
+      "triggers": [
+        "/stock-team intake",
+        "研究目标",
+        "分析标的"
+      ],
+      "commands": [
+        "/stock-team intake"
+      ],
+      "members": [
+        "delivery-manager",
+        "risk-manager"
+      ],
+      "execution_mode": "sequential",
+      "quality_gates": [
+        "intake-gate",
+        "disclaimer-gate"
+      ],
+      "outputs": [
+        "research-brief",
+        "risk-boundary"
+      ],
+      "stages": [
+        {
+          "name": "Input",
+          "owner": "delivery-manager",
+          "actions": [
+            "确认研究目标、标的、周期和数据来源"
+          ],
+          "outputs": [
+            "research-brief.md"
+          ],
+          "gates": [
+            "intake-gate"
+          ]
+        },
+        {
+          "name": "Risk Boundary",
+          "owner": "risk-manager",
+          "actions": [
+            "确认免责声明、禁止性承诺和风险偏好"
+          ],
+          "outputs": [
+            "risk-register.md"
+          ],
+          "gates": [
+            "disclaimer-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "market-stock-analysis",
+      "title": "市场与个股分析",
+      "triggers": [
+        "/stock-team analyze",
+        "市场分析",
+        "个股分析"
+      ],
+      "commands": [
+        "/stock-team analyze"
+      ],
+      "members": [
+        "market-researcher",
+        "stock-analyst",
+        "data-analyst"
+      ],
+      "execution_mode": "hybrid",
+      "quality_gates": [
+        "evidence-gate",
+        "data-quality-gate"
+      ],
+      "outputs": [
+        "market-brief",
+        "stock-analysis",
+        "evidence-index"
+      ],
+      "stages": [
+        {
+          "name": "Market",
+          "owner": "market-researcher",
+          "actions": [
+            "分析指数环境、板块轮动和题材强度"
+          ],
+          "outputs": [
+            "market-brief.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Stock",
+          "owner": "stock-analyst",
+          "actions": [
+            "分析个股量价、形态、事件和反证"
+          ],
+          "outputs": [
+            "stock-analysis.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Data",
+          "owner": "data-analyst",
+          "actions": [
+            "整理数据来源、时效和证据索引"
+          ],
+          "outputs": [
+            "evidence-index.md"
+          ],
+          "gates": [
+            "data-quality-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "strategy-plan",
+      "title": "策略计划",
+      "triggers": [
+        "/stock-team strategy",
+        "策略计划",
+        "交易框架"
+      ],
+      "commands": [
+        "/stock-team strategy"
+      ],
+      "members": [
+        "strategy-lead",
+        "risk-manager",
+        "execution-coach"
+      ],
+      "execution_mode": "hybrid",
+      "quality_gates": [
+        "strategy-gate",
+        "risk-gate",
+        "discipline-gate"
+      ],
+      "outputs": [
+        "strategy-plan",
+        "execution-plan"
+      ],
+      "stages": [
+        {
+          "name": "Strategy",
+          "owner": "strategy-lead",
+          "actions": [
+            "定义策略假设、触发条件和失效条件"
+          ],
+          "outputs": [
+            "strategy-plan.md"
+          ],
+          "gates": [
+            "strategy-gate"
+          ]
+        },
+        {
+          "name": "Risk",
+          "owner": "risk-manager",
+          "actions": [
+            "复核策略仓位、止损、流动性和失效条件"
+          ],
+          "outputs": [
+            "risk-register.md"
+          ],
+          "gates": [
+            "risk-gate"
+          ]
+        },
+        {
+          "name": "Execution",
+          "owner": "execution-coach",
+          "actions": [
+            "转成执行检查表和复盘问题"
+          ],
+          "outputs": [
+            "execution-plan.md"
+          ],
+          "gates": [
+            "discipline-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "risk-control",
+      "title": "风险控制",
+      "triggers": [
+        "/stock-team risk",
+        "仓位控制",
+        "止损风险"
+      ],
+      "commands": [
+        "/stock-team risk"
+      ],
+      "members": [
+        "risk-manager",
+        "data-analyst"
+      ],
+      "execution_mode": "sequential",
+      "quality_gates": [
+        "risk-gate",
+        "disclaimer-gate",
+        "evidence-gate"
+      ],
+      "outputs": [
+        "risk-register",
+        "position-plan"
+      ],
+      "stages": [
+        {
+          "name": "Risk",
+          "owner": "risk-manager",
+          "actions": [
+            "评估仓位、止损、回撤和流动性"
+          ],
+          "outputs": [
+            "risk-register.md"
+          ],
+          "gates": [
+            "risk-gate",
+            "disclaimer-gate"
+          ]
+        },
+        {
+          "name": "Evidence",
+          "owner": "data-analyst",
+          "actions": [
+            "检查风险结论的数据来源"
+          ],
+          "outputs": [
+            "evidence-index.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "strategy-review",
+      "title": "策略复核",
+      "triggers": [
+        "/stock-team review",
+        "策略复核",
+        "风险复核"
+      ],
+      "commands": [
+        "/stock-team review"
+      ],
+      "members": [
+        "strategy-lead",
+        "risk-manager",
+        "delivery-manager"
+      ],
+      "execution_mode": "sequential",
+      "quality_gates": [
+        "strategy-gate",
+        "risk-gate",
+        "delivery-gate"
+      ],
+      "outputs": [
+        "review-report"
+      ],
+      "stages": [
+        {
+          "name": "Strategy Review",
+          "owner": "strategy-lead",
+          "actions": [
+            "复核策略假设、触发条件、反向证据和失效条件"
+          ],
+          "outputs": [
+            "strategy-review.md"
+          ],
+          "gates": [
+            "strategy-gate"
+          ]
+        },
+        {
+          "name": "Risk Review",
+          "owner": "risk-manager",
+          "actions": [
+            "复核仓位风险、禁止性承诺和风险边界"
+          ],
+          "outputs": [
+            "risk-review.md"
+          ],
+          "gates": [
+            "risk-gate"
+          ]
+        },
+        {
+          "name": "Delivery Review",
+          "owner": "delivery-manager",
+          "actions": [
+            "汇总复核结论、冲突信号和需用户决策项"
+          ],
+          "outputs": [
+            "review-report.md"
+          ],
+          "gates": [
+            "delivery-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "research-delivery",
+      "title": "研究交付",
+      "triggers": [
+        "/stock-team deliver",
+        "研究交付",
+        "交付摘要"
+      ],
+      "commands": [
+        "/stock-team deliver"
+      ],
+      "members": [
+        "delivery-manager",
+        "risk-manager"
+      ],
+      "execution_mode": "sequential",
+      "quality_gates": [
+        "delivery-gate",
+        "evidence-gate",
+        "disclaimer-gate"
+      ],
+      "outputs": [
+        "delivery-summary"
+      ],
+      "stages": [
+        {
+          "name": "Deliver",
+          "owner": "delivery-manager",
+          "actions": [
+            "汇总研究结论、证据、风险、置信度和复盘计划"
+          ],
+          "outputs": [
+            "delivery-summary.md"
+          ],
+          "gates": [
+            "delivery-gate",
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Risk Disclosure",
+          "owner": "risk-manager",
+          "actions": [
+            "补齐风险声明、禁止性承诺检查和失效条件"
+          ],
+          "outputs": [
+            "risk-register.md"
+          ],
+          "gates": [
+            "disclaimer-gate"
+          ]
+        }
+      ]
+    }
+  ],
+  "docs": {
+    "methodologies": [
+      {
+        "path": "docs/methodologies/market-research-methodology.md",
+        "title": "市场研究方法论",
+        "sections": [
+          "指数环境",
+          "板块轮动",
+          "题材强度",
+          "失效条件"
+        ],
+        "content": {
+          "指数环境": [
+            "先判断上证指数、创业板指和成交额是否支持风险偏好扩张。",
+            "必须区分趋势判断、震荡判断和极端风险，不用单日涨跌替代环境结论。",
+            "输出至少一条支持证据和一条反向证据。"
+          ],
+          "板块轮动": [
+            "按涨幅、成交额、持续天数和龙头扩散情况识别强弱板块。",
+            "必须说明板块强度来自事实数据还是题材假设。",
+            "若板块轮动过快或无持续性，需要降低策略置信度。"
+          ],
+          "题材强度": [
+            "题材判断必须关联政策、公告、产业事件或资金行为中的至少一种来源。",
+            "区分首发催化、持续发酵和兑现退潮三类阶段。",
+            "不得把未经验证的传闻当作确定事实。"
+          ],
+          "失效条件": [
+            "指数放量下跌、板块龙头破位、题材证据被证伪时，必须标记环境失效。",
+            "数据超过一个交易日未更新时，必须降低置信度或暂停结论。",
+            "无法获得来源和时间的行情或新闻不得作为关键证据。"
+          ]
+        }
+      },
+      {
+        "path": "docs/methodologies/strategy-methodology.md",
+        "title": "策略方法论",
+        "sections": [
+          "策略假设",
+          "触发条件",
+          "执行纪律",
+          "复盘"
+        ],
+        "content": {
+          "策略假设": [
+            "策略必须写明适用行情、目标周期、核心证据和反向证据。",
+            "每个策略只能表达观察框架，不得表达确定性买入、卖出或收益承诺。",
+            "若市场环境、板块强度和个股信号不一致，策略置信度不得标为高。"
+          ],
+          "触发条件": [
+            "触发条件必须包含价格/量能/位置/事件四类信息中的至少两类。",
+            "触发条件只能作为观察条件，不得输出替用户下单的确定指令。",
+            "缺少数据来源或更新时间时，触发条件必须判为未满足。"
+          ],
+          "执行纪律": [
+            "必须声明仓位上限、止损条件、暂停条件和复盘节点。",
+            "遇到计划外追涨、加杠杆、满仓等行为，执行教练必须触发纪律提醒。",
+            "风险经理结论与策略负责人冲突时，以风险阻断为准。"
+          ],
+          "复盘": [
+            "复盘至少记录假设是否成立、证据是否失效、风险是否低估。",
+            "必须区分过程正确但结果随机、过程错误但结果盈利两类情况。",
+            "下一次策略迭代必须引用本次复盘结论。"
+          ]
+        }
+      }
+    ],
+    "standards": [
+      {
+        "path": "docs/engineering-standards/evidence-standard.md",
+        "title": "证据标准",
+        "sections": [
+          "数据来源",
+          "数据时效",
+          "置信度",
+          "反向证据"
+        ],
+        "content": {
+          "数据来源": [
+            "行情、公告、新闻、指标和用户输入必须分别标注来源。",
+            "无法验证来源的数据只能作为背景信息，不能作为核心结论依据。",
+            "不得编造行情价格、成交量、公告或新闻。"
+          ],
+          "数据时效": [
+            "行情数据必须标注交易日和更新时间。",
+            "新闻或公告必须标注发布日期，过期信息需要说明是否仍有效。",
+            "数据超过用户目标周期可接受范围时，必须触发数据质量风险。"
+          ],
+          "置信度": [
+            "置信度只允许高、中、低，并必须说明不确定性来源。",
+            "缺少反向证据或数据源时，置信度不得为高。",
+            "高风险输出必须同时包含失效条件。"
+          ],
+          "反向证据": [
+            "每个核心结论必须列出至少一条可能推翻结论的证据。",
+            "反向证据强于正向证据时，必须降低策略等级或阻断交付。",
+            "不能只选择支持既有判断的数据。"
+          ]
+        }
+      }
+    ],
+    "integrations": [
+      {
+        "path": "docs/integrations/market-data-contract.md",
+        "title": "行情数据契约",
+        "sections": [
+          "数据来源",
+          "更新时间",
+          "缺失处理",
+          "安全边界"
+        ],
+        "content": {
+          "数据来源": [
+            "支持用户提供数据、公开行情、公告、新闻和经授权的外部金融数据能力。",
+            "每个数据源都必须记录来源名称、获取方式和适用角色。",
+            "未授权外部能力不得被描述为已调用。"
+          ],
+          "更新时间": [
+            "行情数据默认要求交易日内或最近一个交易日。",
+            "事件和公告数据必须记录发布时间。",
+            "无法确认更新时间时，必须写入信息缺口。"
+          ],
+          "缺失处理": [
+            "关键字段缺失时输出“无法完成该判断”，不得用猜测补齐。",
+            "非关键字段缺失时可以继续分析，但必须在证据索引中标注影响。",
+            "数据冲突时必须同时列出冲突来源并降低置信度。"
+          ],
+          "安全边界": [
+            "不得保存密钥、Cookie、Token 或个人账户信息。",
+            "不得绕过用户授权安装或调用外部金融数据工具。",
+            "不得输出替代持牌投顾服务的承诺。"
+          ]
+        }
+      }
+    ],
+    "qualityGates": [
+      "intake-gate",
+      "strategy-gate",
+      "risk-gate",
+      "data-quality-gate",
+      "evidence-gate",
+      "discipline-gate",
+      "disclaimer-gate",
+      "delivery-gate"
+    ],
+    "rubrics": [
+      "证据充分性",
+      "风险控制完整度",
+      "策略假设清晰度",
+      "反向证据覆盖度",
+      "执行纪律可操作性",
+      "免责声明完整度"
+    ]
+  },
+  "templates": [
+    {
+      "id": "research-brief",
+      "path": "research-brief.md",
+      "title": "研究简报",
+      "sections": [
+        "研究目标",
+        "标的与周期",
+        "数据来源",
+        "信息缺口",
+        "风险边界"
+      ],
+      "content": {
+        "研究目标": [
+          "写明用户要解决的问题、研究对象和预期用途。",
+          "若目标是直接买卖决策，必须改写为研究辅助目标。"
+        ],
+        "标的与周期": [
+          "记录股票代码、指数、板块或题材名称。",
+          "标注短线、中线或长期观察周期。"
+        ],
+        "数据来源": [
+          "列出用户提供数据、公开数据或外部能力来源。",
+          "每个来源必须带更新时间。"
+        ],
+        "信息缺口": [
+          "列出缺失的行情、公告、财务或新闻信息。",
+          "说明缺口对结论置信度的影响。"
+        ],
+        "风险边界": [
+          "声明不构成投资建议。",
+          "记录用户风险偏好、仓位约束和禁止性承诺。"
+        ]
+      }
+    },
+    {
+      "id": "market-brief",
+      "path": "market-brief.md",
+      "title": "市场环境简报",
+      "sections": [
+        "指数环境",
+        "板块轮动",
+        "题材强度",
+        "风险偏好",
+        "失效条件"
+      ],
+      "content": {
+        "指数环境": [
+          "记录指数趋势、成交额变化和市场风险偏好。",
+          "至少列出一条支持证据和一条反向证据。"
+        ],
+        "板块轮动": [
+          "列出强势板块、弱势板块和轮动持续性。",
+          "说明龙头扩散或退潮迹象。"
+        ],
+        "题材强度": [
+          "记录题材来源、催化事件和持续性判断。",
+          "区分事实、假设和传闻。"
+        ],
+        "风险偏好": [
+          "标注市场处于进攻、防守或观望状态。",
+          "说明风险偏好对策略仓位的影响。"
+        ],
+        "失效条件": [
+          "列出指数、板块或题材失效信号。",
+          "失效时必须降低置信度或停止交付策略。"
+        ]
+      }
+    },
+    {
+      "id": "stock-analysis",
+      "path": "stock-analysis.md",
+      "title": "个股分析",
+      "sections": [
+        "基本面线索",
+        "量价形态",
+        "事件催化",
+        "反向证据",
+        "置信度"
+      ],
+      "content": {
+        "基本面线索": [
+          "记录主营、业绩、公告、产业链或政策线索。",
+          "缺少可靠来源时只能标为待验证。"
+        ],
+        "量价形态": [
+          "记录趋势方向、成交量变化、关键位置和异常波动。",
+          "不得基于单一指标得出确定结论。"
+        ],
+        "事件催化": [
+          "列出公告、新闻、政策、板块事件或市场传闻。",
+          "传闻必须标记为未验证。"
+        ],
+        "反向证据": [
+          "列出至少一条看空、失效或冲突信号。",
+          "反向证据强时必须降低置信度。"
+        ],
+        "置信度": [
+          "只使用高、中、低。",
+          "说明置信度依据和不确定性来源。"
+        ]
+      }
+    },
+    {
+      "id": "strategy-plan",
+      "path": "strategy-plan.md",
+      "title": "策略计划",
+      "sections": [
+        "策略假设",
+        "适用行情",
+        "触发条件",
+        "失效条件",
+        "复盘计划"
+      ],
+      "content": {
+        "策略假设": [
+          "写明策略成立所依赖的市场、板块和个股证据。",
+          "必须包含至少一条反向证据。"
+        ],
+        "适用行情": [
+          "说明适用于趋势、震荡、反弹或防守中的哪类环境。",
+          "市场环境不匹配时不得输出策略计划。"
+        ],
+        "触发条件": [
+          "描述观察条件，不输出确定性买卖指令。",
+          "触发条件必须可被数据或事件验证。"
+        ],
+        "失效条件": [
+          "列出价格、量能、事件或风险条件中的失效信号。",
+          "失效时必须停止沿用原策略。"
+        ],
+        "复盘计划": [
+          "记录复盘时间、复盘指标和需要验证的假设。",
+          "复盘必须比较原假设与实际变化。"
+        ]
+      }
+    },
+    {
+      "id": "risk-register",
+      "path": "risk-register.md",
+      "title": "风险台账",
+      "sections": [
+        "仓位风险",
+        "止损条件",
+        "回撤风险",
+        "流动性风险",
+        "禁止性承诺检查"
+      ],
+      "content": {
+        "仓位风险": [
+          "记录假设仓位上限和不适合加仓的条件。",
+          "不得建议满仓或加杠杆。"
+        ],
+        "止损条件": [
+          "写明策略失效、数据失效和风险偏好失效条件。",
+          "止损条件必须先于策略交付给出。"
+        ],
+        "回撤风险": [
+          "说明可能导致亏损扩大的场景。",
+          "高波动标的必须提示回撤不确定性。"
+        ],
+        "流动性风险": [
+          "记录成交额、封单、跌停或停牌等流动性风险。",
+          "流动性不足时必须阻断高置信度结论。"
+        ],
+        "禁止性承诺检查": [
+          "检查是否出现承诺收益、保证上涨或确定性买卖指令。",
+          "出现禁止性承诺时必须改写或阻断输出。"
+        ]
+      }
+    },
+    {
+      "id": "evidence-index",
+      "path": "evidence-index.md",
+      "title": "证据索引",
+      "sections": [
+        "行情数据",
+        "公告新闻",
+        "指标口径",
+        "缺失与冲突",
+        "结论映射"
+      ],
+      "content": {
+        "行情数据": [
+          "记录指数、板块、个股行情来源和更新时间。",
+          "无法确认更新时间时必须标为低置信度。"
+        ],
+        "公告新闻": [
+          "列出公告、新闻、政策或产业事件来源。",
+          "传闻必须标注为未验证信息。"
+        ],
+        "指标口径": [
+          "说明成交量、涨幅、趋势、关键位置等指标口径。",
+          "不得使用未说明口径的指标支撑关键结论。"
+        ],
+        "缺失与冲突": [
+          "列出缺失字段、冲突来源和对结论的影响。",
+          "关键数据冲突时必须降低置信度或阻断结论。"
+        ],
+        "结论映射": [
+          "把每个核心结论映射到对应证据。",
+          "没有证据映射的结论不得进入交付摘要。"
+        ]
+      }
+    },
+    {
+      "id": "delivery-summary",
+      "path": "delivery-summary.md",
+      "title": "研究交付摘要",
+      "sections": [
+        "结论摘要",
+        "证据索引",
+        "风险声明",
+        "置信度",
+        "失效条件",
+        "复盘计划"
+      ],
+      "content": {
+        "结论摘要": [
+          "用研究辅助语言总结结论，不给确定性买卖指令。",
+          "同时说明支持因素和反向因素。"
+        ],
+        "证据索引": [
+          "列出每个关键结论对应的数据、公告、新闻或用户输入来源。",
+          "所有来源必须带时间。"
+        ],
+        "风险声明": [
+          "明确不构成投资建议。",
+          "列出仓位、止损、流动性和数据缺失风险。"
+        ],
+        "置信度": [
+          "给出高、中、低，并解释不确定性来源。",
+          "缺少核心证据时不得标为高。"
+        ],
+        "失效条件": [
+          "列出市场、板块、个股和数据维度的失效条件。",
+          "失效后必须重新执行分析流程。"
+        ],
+        "复盘计划": [
+          "写明何时复盘、复盘哪些假设、如何记录偏差。",
+          "复盘结果用于更新下一次策略假设。"
+        ]
+      }
+    }
+  ],
+  "domainKnowledge": {
+    "concepts": [
+      "指数环境：用指数趋势、成交额和风险偏好判断市场是否支持策略。",
+      "板块轮动：用涨幅、成交额、持续天数和龙头扩散判断题材持续性。",
+      "量价形态：结合趋势方向、成交量变化、关键位置和异常波动识别信号。",
+      "反向证据：任何结论都必须列出可能推翻该结论的事实或信号。"
+    ],
+    "methods": [
+      "先市场后板块再个股，避免脱离大环境讨论单一标的。",
+      "先证据后策略，策略必须引用市场、板块、个股和风险四类证据。",
+      "先风险后交付，风险经理可以阻断缺少止损、失效条件或免责声明的输出。"
+    ],
+    "evidenceChecklist": [
+      "行情数据必须包含来源和更新时间。",
+      "策略必须包含支持证据、反向证据、置信度和失效条件。",
+      "高风险结论必须包含免责声明和禁止性承诺检查。"
+    ],
+    "failureModes": [
+      "把未经验证的消息当作事实。",
+      "只看单一技术指标就输出确定结论。",
+      "缺少止损、仓位或失效条件仍交付策略。",
+      "使用确定性买卖指令或承诺收益。"
+    ]
+  },
+  "capabilityMatrix": [
+    {
+      "capability": "市场环境判断",
+      "owner": "market-researcher",
+      "inputs": [
+        "指数行情",
+        "成交额",
+        "板块强弱"
+      ],
+      "outputs": [
+        "market-brief",
+        "theme-map"
+      ],
+      "gates": [
+        "evidence-gate",
+        "data-quality-gate"
+      ],
+      "maturity": "usable"
+    },
+    {
+      "capability": "个股量价分析",
+      "owner": "stock-analyst",
+      "inputs": [
+        "股票代码",
+        "价格和成交量",
+        "公告和事件"
+      ],
+      "outputs": [
+        "stock-analysis",
+        "signal-summary"
+      ],
+      "gates": [
+        "evidence-gate",
+        "strategy-gate"
+      ],
+      "maturity": "usable"
+    },
+    {
+      "capability": "策略风险阻断",
+      "owner": "risk-manager",
+      "inputs": [
+        "策略计划",
+        "仓位假设",
+        "用户风险偏好"
+      ],
+      "outputs": [
+        "risk-register",
+        "position-plan"
+      ],
+      "gates": [
+        "risk-gate",
+        "disclaimer-gate"
+      ],
+      "maturity": "validated"
+    }
+  ],
+  "acceptanceScenarios": [
+    {
+      "id": "single-stock-trend-review",
+      "input": "用户提供一只 A 股代码，要求判断短线趋势并给出研究辅助结论。",
+      "expectedOutputs": [
+        "market-brief.md",
+        "stock-analysis.md",
+        "risk-register.md",
+        "delivery-summary.md"
+      ],
+      "mustPassGates": [
+        "evidence-gate",
+        "risk-gate",
+        "disclaimer-gate",
+        "delivery-gate"
+      ],
+      "failureExamples": [
+        "直接输出买入或卖出指令。",
+        "未标注行情数据来源和更新时间。",
+        "没有列出反向证据或失效条件。"
+      ]
+    },
+    {
+      "id": "theme-rotation-analysis",
+      "input": "用户询问某个板块题材是否具备持续性，需要市场、题材和风险分析。",
+      "expectedOutputs": [
+        "market-brief.md",
+        "evidence-index.md",
+        "delivery-summary.md"
+      ],
+      "mustPassGates": [
+        "data-quality-gate",
+        "evidence-gate",
+        "disclaimer-gate"
+      ],
+      "failureExamples": [
+        "把传闻当作确定政策或公告。",
+        "没有区分事实、假设和未验证信息。",
+        "未说明板块退潮或题材失效条件。"
+      ]
+    }
+  ],
+  "dataContracts": [
+    {
+      "source": "用户提供行情或研究材料",
+      "freshness": "必须记录用户提供时间；若无法确认交易日，按低置信度处理。",
+      "requiredFields": [
+        "标的名称或代码",
+        "时间周期",
+        "数据来源",
+        "更新时间"
+      ],
+      "missingDataPolicy": "缺少关键字段时停止对应判断，并写入信息缺口。",
+      "allowedUse": [
+        "研究辅助",
+        "证据索引",
+        "风险提示"
+      ]
+    },
+    {
+      "source": "公开行情、公告或新闻",
+      "freshness": "行情默认最近一个交易日；公告和新闻必须记录发布时间。",
+      "requiredFields": [
+        "来源名称",
+        "发布时间",
+        "核心事实",
+        "引用位置"
+      ],
+      "missingDataPolicy": "无法确认来源或时间时不得作为核心证据。",
+      "allowedUse": [
+        "市场环境判断",
+        "题材强度判断",
+        "反向证据"
+      ]
+    }
+  ],
+  "externalSkills": {
+    "skills": [
+      {
+        "id": "finance-data-analysis",
+        "name": "Finance Data Analysis",
+        "package": "example/finance-data-analysis@latest",
+        "qualityTier": "candidate",
+        "roles": [
+          "market-researcher",
+          "stock-analyst",
+          "data-analyst",
+          "strategy-lead"
+        ],
+        "keywords": [
+          "finance",
+          "stock",
+          "market",
+          "data",
+          "A股",
+          "量价",
+          "回测"
+        ],
+        "useWhen": [
+          "需要行情数据整理、指标计算或回测说明"
+        ]
+      }
+    ],
+    "roleMap": [
+      {
+        "role": "market-researcher",
+        "skills": [
+          "finance-data-analysis"
+        ]
+      },
+      {
+        "role": "stock-analyst",
+        "skills": [
+          "finance-data-analysis"
+        ]
+      },
+      {
+        "role": "data-analyst",
+        "skills": [
+          "finance-data-analysis"
+        ]
+      },
+      {
+        "role": "strategy-lead",
+        "skills": [
+          "finance-data-analysis"
+        ]
+      }
+    ],
+    "adapters": [
+      {
+        "id": "finance-data-analysis-adapter",
+        "skill": "finance-data-analysis",
+        "provider": "external-skill",
+        "inputSchema": [
+          "symbolOrIndex",
+          "timeRange",
+          "dataSource",
+          "freshness"
+        ],
+        "outputSchema": [
+          "marketDataSummary",
+          "indicatorNotes",
+          "sourceTimestamp",
+          "dataQualityRisks"
+        ],
+        "auth": "user-approval",
+        "fallback": "未获授权时仅使用用户提供数据和公开信息，并降低置信度。",
+        "verifyCommand": "node scripts/list-external-skills.js --role data-analyst --query finance"
+      }
+    ],
+    "installPolicy": "外部金融数据能力仅作为候选；未获得用户明确授权、数据来源和合规边界前不得安装或调用。"
+  },
+  "scripts": {
+    "includeContextBuilder": true,
+    "includeExternalSkillInstaller": true,
+    "includeValidation": true
+  },
+  "riskControls": {
+    "domainRiskLevel": "high",
+    "requiredDisclaimers": [
+      "本团队输出仅用于研究和教育辅助，不构成投资建议。",
+      "本团队不替代持牌投顾建议，最终投资决策和风险由用户自行承担。",
+      "所有分析都必须说明数据来源、数据时效、仓位风险和失效条件。"
+    ],
+    "blockedClaims": [
+      "不得承诺收益。",
+      "不得输出确定性买卖指令。",
+      "不得保证上涨、涨停、回本或盈利。"
+    ],
+    "evidenceRules": [
+      "所有结论必须带证据、置信度和不确定性来源。",
+      "所有策略必须包含止损条件、失效条件和复盘计划。",
+      "行情、公告、新闻和指标必须标注来源与时间。"
+    ]
+  },
+  "output": {
+    "defaultDirectory": "<skills-root>/stock-trading-team",
+    "overwritePolicy": "block"
+  }
+}

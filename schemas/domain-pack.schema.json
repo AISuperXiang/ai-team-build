@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Team Build Domain Pack",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "description",
+    "keywords",
+    "riskLevel",
+    "recommendedSpecPath",
+    "parameters",
+    "capabilities",
+    "qualityGates",
+    "artifacts"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "keywords": {
+      "$ref": "#/$defs/stringList"
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "recommendedSpecPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parameters": {
+      "type": "object",
+      "required": [
+        "skillId",
+        "skillName",
+        "commandPrefix",
+        "outputDirectory"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "default",
+          "description"
+        ],
+        "properties": {
+          "default": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/stringList"
+              }
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "capabilities": {
+      "$ref": "#/$defs/stringList"
+    },
+    "qualityGates": {
+      "$ref": "#/$defs/stringList"
+    },
+    "artifacts": {
+      "$ref": "#/$defs/stringList"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

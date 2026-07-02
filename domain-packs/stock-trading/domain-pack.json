@@ -1,0 +1,72 @@
+{
+  "id": "stock-trading",
+  "title": "A 股投资研究团队包",
+  "description": "用于生成 A 股市场、板块、个股、策略、风险和交付协作团队。",
+  "keywords": [
+    "A股",
+    "股票",
+    "炒股",
+    "趋势",
+    "量价",
+    "板块",
+    "题材",
+    "交易计划"
+  ],
+  "riskLevel": "high",
+  "recommendedSpecPath": "../../fixtures/stock-trading-team.team-spec.json",
+  "parameters": {
+    "skillId": {
+      "default": "stock-trading-team",
+      "description": "生成团队 Skill 的 kebab-case id。"
+    },
+    "skillName": {
+      "default": "A Stock Trading Research Team Skill",
+      "description": "生成团队 Skill 的展示名称。"
+    },
+    "description": {
+      "default": "A-share market research, strategy review, risk control, and trading-plan workflow skill.",
+      "description": "生成团队 Skill 的一句话说明。"
+    },
+    "domain": {
+      "default": "A 股投资研究与交易计划辅助",
+      "description": "团队覆盖的领域边界。"
+    },
+    "targetUsers": {
+      "default": [
+        "需要结构化分析 A 股市场和个股的 Agent 用户",
+        "需要风险控制和交易复盘框架的个人研究者"
+      ],
+      "description": "目标用户列表。"
+    },
+    "primaryValue": {
+      "default": "把市场环境、板块题材、个股量价、策略假设、仓位风险和复盘纪律沉淀为可验证的研究流程。",
+      "description": "团队核心价值。"
+    },
+    "commandPrefix": {
+      "default": "/stock-team",
+      "description": "Slash 指令前缀。"
+    },
+    "outputDirectory": {
+      "default": "<skills-root>/stock-trading-team",
+      "description": "默认生成目录。"
+    }
+  },
+  "capabilities": [
+    "市场环境判断",
+    "个股量价分析",
+    "策略风险阻断"
+  ],
+  "qualityGates": [
+    "evidence-gate",
+    "risk-gate",
+    "disclaimer-gate",
+    "delivery-gate"
+  ],
+  "artifacts": [
+    "market-brief.md",
+    "stock-analysis.md",
+    "evidence-index.md",
+    "risk-register.md",
+    "delivery-summary.md"
+  ]
+}

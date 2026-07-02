@@ -1,0 +1,43 @@
+{
+  "name": "ai-team-build",
+  "version": "0.1.0",
+  "description": "AI team skill builder that generates complete agent-readable team skills from a team specification.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AISuperXiang/ai-team-build.git"
+  },
+  "homepage": "https://github.com/AISuperXiang/ai-team-build",
+  "files": [
+    "assets/",
+    "commands/",
+    "docs/",
+    "domain-packs/",
+    "examples/",
+    "fixtures/",
+    "schemas/",
+    "scripts/",
+    "LICENSE",
+    "README.md",
+    "SKILL.md",
+    "skill-runtime.json"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "generate": "node scripts/generate-team-skill.js",
+    "spec": "node scripts/synthesize-team-spec.js",
+    "score": "node scripts/score-team-spec.js",
+    "validate": "node scripts/validate-structure.js",
+    "validate:structure": "node scripts/validate-structure.js",
+    "validate:spec": "node scripts/validate-team-spec.js",
+    "validate:generated": "node scripts/validate-generated-skill.js",
+    "validate:domain-packs": "node scripts/validate-domain-packs.js",
+    "acceptance": "node scripts/run-acceptance-scenarios.js",
+    "test:score": "node scripts/score-team-spec.js fixtures/stock-trading-team.team-spec.json --format json",
+    "test:fixture": "node scripts/generate-team-skill.js --spec fixtures/stock-trading-team.team-spec.json --output .tmp/stock-trading-team --overwrite && node scripts/validate-generated-skill.js .tmp/stock-trading-team && node .tmp/stock-trading-team/scripts/run-acceptance-scenarios.js .tmp/stock-trading-team",
+    "test:regression": "node scripts/run-release-regression-tests.js",
+    "test": "npm run validate:structure && npm run validate:domain-packs && npm run validate:spec -- fixtures/stock-trading-team.team-spec.json && npm run test:score && npm run test:fixture && npm run test:regression"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,74 @@
+{
+  "id": "product-rd",
+  "title": "产品研发交付团队包",
+  "description": "用于生成从需求澄清、产品方案、技术方案、测试验证到交付摘要的产品研发团队。",
+  "keywords": [
+    "产品",
+    "研发",
+    "PRD",
+    "需求",
+    "交付",
+    "测试",
+    "验收",
+    "项目"
+  ],
+  "riskLevel": "medium",
+  "recommendedSpecPath": "../../examples/product-rd-team.team-spec.json",
+  "parameters": {
+    "skillId": {
+      "default": "product-rd-team",
+      "description": "生成团队 Skill 的 kebab-case id。"
+    },
+    "skillName": {
+      "default": "Product RD Team Skill",
+      "description": "生成团队 Skill 的展示名称。"
+    },
+    "description": {
+      "default": "Product, design, engineering, QA, and delivery expert-team workflow skill.",
+      "description": "生成团队 Skill 的一句话说明。"
+    },
+    "domain": {
+      "default": "产品研发",
+      "description": "团队覆盖的领域边界。"
+    },
+    "targetUsers": {
+      "default": [
+        "需要从需求到交付推进功能的 Agent 用户",
+        "需要沉淀标准产品研发团队流程的团队"
+      ],
+      "description": "目标用户列表。"
+    },
+    "primaryValue": {
+      "default": "把模糊需求推进为有 PRD、有方案、有实现计划、有验证证据和交付摘要的可验收结果。",
+      "description": "团队核心价值。"
+    },
+    "commandPrefix": {
+      "default": "/product-team",
+      "description": "Slash 指令前缀。"
+    },
+    "outputDirectory": {
+      "default": "<skills-root>/product-rd-team",
+      "description": "默认生成目录。"
+    }
+  },
+  "capabilities": [
+    "需求价值澄清",
+    "技术交付设计",
+    "验收证据复核"
+  ],
+  "qualityGates": [
+    "requirement-gate",
+    "value-gate",
+    "technical-gate",
+    "test-gate",
+    "evidence-gate",
+    "delivery-gate"
+  ],
+  "artifacts": [
+    "prd.md",
+    "technical-design.md",
+    "test-plan.md",
+    "verification-report.md",
+    "delivery-summary.md"
+  ]
+}

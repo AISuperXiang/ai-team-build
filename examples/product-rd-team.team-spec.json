@@ -1,0 +1,919 @@
+{
+  "skill": {
+    "id": "product-rd-team",
+    "name": "Product RD Team Skill",
+    "description": "Product, design, engineering, QA, and delivery expert-team workflow skill.",
+    "version": "0.1.0",
+    "domain": "产品研发",
+    "targetUsers": [
+      "需要从需求到交付推进功能的 Agent 用户",
+      "需要沉淀标准产品研发团队流程的团队"
+    ],
+    "primaryValue": "把模糊需求推进为有 PRD、有方案、有实现计划、有验证证据和交付摘要的可验收结果。"
+  },
+  "commands": {
+    "prefix": "/product-team",
+    "items": [
+      {
+        "name": "intake",
+        "workflow": "requirement-review",
+        "description": "梳理需求目标、范围、价值和缺口。",
+        "requiredInput": "需求描述",
+        "defaultOutput": "需求简报和问题清单"
+      },
+      {
+        "name": "build",
+        "workflow": "requirement-delivery",
+        "description": "推进端到端产品研发交付。",
+        "requiredInput": "需求描述、项目路径或交付上下文",
+        "defaultOutput": "PRD、方案、实现计划、验证和交付摘要"
+      },
+      {
+        "name": "deliver",
+        "workflow": "delivery-review",
+        "description": "汇总交付结果和剩余风险。",
+        "requiredInput": "交付上下文",
+        "defaultOutput": "交付摘要"
+      }
+    ]
+  },
+  "members": [
+    {
+      "id": "product-manager",
+      "name": "产品经理",
+      "role": "product",
+      "when_to_load": [
+        "需求澄清",
+        "PRD 编写"
+      ],
+      "primary_outputs": [
+        "prd",
+        "acceptance-criteria"
+      ],
+      "quality_gates": [
+        "requirement-gate",
+        "value-gate"
+      ],
+      "responsibilities": [
+        "明确目标用户、价值假设、范围和验收标准。",
+        "把模糊诉求拆成可实现的需求切片。"
+      ],
+      "inputs": [
+        "用户目标",
+        "业务背景",
+        "约束和成功标准"
+      ],
+      "outputs": [
+        "需求简报",
+        "PRD",
+        "验收标准"
+      ],
+      "workingLogic": [
+        "识别用户、场景、痛点和成功指标。",
+        "区分 in scope 与 out of scope。",
+        "为核心路径定义可验证验收标准。"
+      ],
+      "checklist": [
+        "是否说明为谁解决什么问题。",
+        "是否有价值假设和验收口径。",
+        "是否有明确范围边界。"
+      ],
+      "escalation": [
+        "目标用户无法确定。",
+        "验收标准无法转成测试条件。"
+      ],
+      "doNotDo": [
+        "不替研发指定不必要技术实现。",
+        "不在价值缺失时推动实现。"
+      ],
+      "externalSkills": [
+        "product-planning"
+      ]
+    },
+    {
+      "id": "tech-lead",
+      "name": "技术负责人",
+      "role": "engineering",
+      "when_to_load": [
+        "技术方案",
+        "实现计划",
+        "风险评估"
+      ],
+      "primary_outputs": [
+        "technical-design",
+        "implementation-plan"
+      ],
+      "quality_gates": [
+        "technical-gate",
+        "decision-gate"
+      ],
+      "responsibilities": [
+        "设计技术方案和模块边界。",
+        "识别实现风险、依赖和回滚路径。"
+      ],
+      "inputs": [
+        "PRD",
+        "代码现状",
+        "工程约束"
+      ],
+      "outputs": [
+        "技术方案",
+        "任务拆分",
+        "风险和决策"
+      ],
+      "workingLogic": [
+        "先读项目结构和既有模式。",
+        "设计最小可交付实现路径。",
+        "记录关键取舍和回滚策略。"
+      ],
+      "checklist": [
+        "方案是否符合现有架构。",
+        "风险和回滚是否明确。",
+        "任务是否可验证。"
+      ],
+      "escalation": [
+        "存在跨系统依赖。",
+        "技术方案会影响范围或成本。"
+      ],
+      "doNotDo": [
+        "不做无关重构。",
+        "不跳过验证计划。"
+      ],
+      "externalSkills": [
+        "code-review"
+      ]
+    },
+    {
+      "id": "qa-engineer",
+      "name": "测试工程师",
+      "role": "qa",
+      "when_to_load": [
+        "测试策略",
+        "回归验证",
+        "交付验收"
+      ],
+      "primary_outputs": [
+        "test-plan",
+        "verification-report"
+      ],
+      "quality_gates": [
+        "test-gate",
+        "evidence-gate"
+      ],
+      "responsibilities": [
+        "设计测试策略和用例。",
+        "确认验收标准有验证证据。"
+      ],
+      "inputs": [
+        "PRD",
+        "技术方案",
+        "实现说明"
+      ],
+      "outputs": [
+        "测试计划",
+        "验证结果",
+        "缺陷和风险"
+      ],
+      "workingLogic": [
+        "按核心路径、异常路径和边界条件设计用例。",
+        "运行可用验证并记录证据。",
+        "对未验证风险给出影响。"
+      ],
+      "checklist": [
+        "核心路径是否覆盖。",
+        "失败和边界是否覆盖。",
+        "证据是否可复现。"
+      ],
+      "escalation": [
+        "验收标准不可测。",
+        "关键路径无法验证。"
+      ],
+      "doNotDo": [
+        "不把未验证说成已验证。",
+        "不隐藏回归风险。"
+      ],
+      "externalSkills": [
+        "test-generation"
+      ]
+    },
+    {
+      "id": "delivery-manager",
+      "name": "交付经理",
+      "role": "delivery",
+      "when_to_load": [
+        "流程推进",
+        "风险同步",
+        "最终交付"
+      ],
+      "primary_outputs": [
+        "workflow-status",
+        "delivery-summary"
+      ],
+      "quality_gates": [
+        "delivery-gate"
+      ],
+      "responsibilities": [
+        "维护状态板、决策、风险、证据和交付摘要。",
+        "汇总多角色结论并处理冲突。"
+      ],
+      "inputs": [
+        "各角色产出",
+        "验证结果",
+        "用户决策"
+      ],
+      "outputs": [
+        "状态板",
+        "风险清单",
+        "交付摘要"
+      ],
+      "workingLogic": [
+        "选择工作流并建立状态。",
+        "阶段结束检查门禁。",
+        "最终只输出事实、证据、风险和建议。"
+      ],
+      "checklist": [
+        "门禁是否通过。",
+        "证据是否充分。",
+        "风险是否有归属。"
+      ],
+      "escalation": [
+        "多角色结论冲突。",
+        "门禁失败但仍要求交付。"
+      ],
+      "doNotDo": [
+        "不把流程状态伪装成完成结果。",
+        "不隐藏门禁失败。"
+      ],
+      "externalSkills": []
+    }
+  ],
+  "workflows": [
+    {
+      "id": "requirement-review",
+      "title": "需求评审",
+      "triggers": [
+        "/product-team intake",
+        "需求澄清",
+        "PRD 评审"
+      ],
+      "commands": [
+        "/product-team intake"
+      ],
+      "members": [
+        "delivery-manager",
+        "product-manager"
+      ],
+      "execution_mode": "sequential",
+      "quality_gates": [
+        "requirement-gate",
+        "value-gate"
+      ],
+      "outputs": [
+        "requirement-brief",
+        "prd"
+      ],
+      "stages": [
+        {
+          "name": "Intake",
+          "owner": "delivery-manager",
+          "actions": [
+            "整理目标、输入和缺口"
+          ],
+          "outputs": [
+            "requirement-brief.md"
+          ],
+          "gates": [
+            "requirement-gate"
+          ]
+        },
+        {
+          "name": "PRD",
+          "owner": "product-manager",
+          "actions": [
+            "定义范围、价值和验收标准"
+          ],
+          "outputs": [
+            "prd.md"
+          ],
+          "gates": [
+            "value-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "requirement-delivery",
+      "title": "端到端需求交付",
+      "triggers": [
+        "/product-team build",
+        "实现需求",
+        "完整交付"
+      ],
+      "commands": [
+        "/product-team build"
+      ],
+      "members": [
+        "delivery-manager",
+        "product-manager",
+        "tech-lead",
+        "qa-engineer"
+      ],
+      "execution_mode": "hybrid",
+      "quality_gates": [
+        "requirement-gate",
+        "technical-gate",
+        "test-gate",
+        "delivery-gate"
+      ],
+      "outputs": [
+        "technical-design",
+        "implementation-plan",
+        "test-plan",
+        "delivery-summary"
+      ],
+      "stages": [
+        {
+          "name": "Plan",
+          "owner": "product-manager",
+          "actions": [
+            "明确范围和验收"
+          ],
+          "outputs": [
+            "prd.md"
+          ],
+          "gates": [
+            "requirement-gate"
+          ]
+        },
+        {
+          "name": "Design",
+          "owner": "tech-lead",
+          "actions": [
+            "设计方案和任务拆分"
+          ],
+          "outputs": [
+            "technical-design.md",
+            "implementation-plan.md"
+          ],
+          "gates": [
+            "technical-gate"
+          ]
+        },
+        {
+          "name": "Verify",
+          "owner": "qa-engineer",
+          "actions": [
+            "设计并执行验证"
+          ],
+          "outputs": [
+            "test-plan.md"
+          ],
+          "gates": [
+            "test-gate"
+          ]
+        },
+        {
+          "name": "Deliver",
+          "owner": "delivery-manager",
+          "actions": [
+            "汇总结论、证据和风险"
+          ],
+          "outputs": [
+            "delivery-summary.md"
+          ],
+          "gates": [
+            "delivery-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "delivery-review",
+      "title": "交付复核",
+      "triggers": [
+        "/product-team deliver",
+        "交付摘要",
+        "验收复盘"
+      ],
+      "commands": [
+        "/product-team deliver"
+      ],
+      "members": [
+        "delivery-manager",
+        "qa-engineer"
+      ],
+      "execution_mode": "sequential",
+      "quality_gates": [
+        "evidence-gate",
+        "delivery-gate"
+      ],
+      "outputs": [
+        "delivery-summary"
+      ],
+      "stages": [
+        {
+          "name": "Evidence",
+          "owner": "qa-engineer",
+          "actions": [
+            "复核验证证据、未验证风险和验收口径"
+          ],
+          "outputs": [
+            "verification-report.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Review",
+          "owner": "delivery-manager",
+          "actions": [
+            "检查证据、风险和未解决事项"
+          ],
+          "outputs": [
+            "delivery-summary.md"
+          ],
+          "gates": [
+            "delivery-gate"
+          ]
+        }
+      ]
+    }
+  ],
+  "docs": {
+    "methodologies": [
+      {
+        "path": "docs/methodologies/product-methodology.md",
+        "title": "产品方法论",
+        "sections": [
+          "需求澄清",
+          "价值假设",
+          "验收标准"
+        ],
+        "content": {
+          "需求澄清": [
+            "必须明确目标用户、业务场景、当前痛点和期望结果。",
+            "无法确认用户或场景时，不进入实现计划。"
+          ],
+          "价值假设": [
+            "每个需求必须写明业务价值、成功指标和观察方式。",
+            "价值无法观测时，必须退回补充指标基线。"
+          ],
+          "验收标准": [
+            "验收标准必须能转成测试条件或人工验收记录。",
+            "核心路径、异常路径和边界条件必须至少覆盖一种。"
+          ]
+        }
+      }
+    ],
+    "standards": [
+      {
+        "path": "docs/engineering-standards/technical-design-standard.md",
+        "title": "技术方案标准",
+        "sections": [
+          "架构边界",
+          "实现计划",
+          "回滚策略"
+        ],
+        "content": {
+          "架构边界": [
+            "技术方案必须说明受影响模块、接口、数据和依赖。",
+            "不得把无关重构放入当前需求交付。"
+          ],
+          "实现计划": [
+            "任务拆分必须对应可验证的垂直切片。",
+            "每个任务必须说明验证方式和失败处理。"
+          ],
+          "回滚策略": [
+            "涉及线上行为、数据或跨模块契约时必须给出回滚路径。",
+            "无法回滚的变更必须升级为用户决策项。"
+          ]
+        }
+      }
+    ],
+    "integrations": [
+      {
+        "path": "docs/integrations/issue-tracker-contract.md",
+        "title": "Issue Tracker 契约",
+        "sections": [
+          "创建 issue",
+          "同步状态",
+          "交付证据"
+        ],
+        "content": {
+          "创建 issue": [
+            "issue 必须包含目标、范围、验收标准和风险。",
+            "拆分后的 issue 必须能独立验证。"
+          ],
+          "同步状态": [
+            "状态同步必须记录当前阶段、阻塞项和下一步责任角色。",
+            "状态不得把未验证结果标为完成。"
+          ],
+          "交付证据": [
+            "交付必须引用命令、日志、截图、测试结果或人工验收记录。",
+            "没有证据的完成结论必须降级为待验证。"
+          ]
+        }
+      }
+    ],
+    "qualityGates": [
+      "requirement-gate",
+      "value-gate",
+      "technical-gate",
+      "test-gate",
+      "evidence-gate",
+      "delivery-gate"
+    ],
+    "rubrics": [
+      "业务价值",
+      "技术可行性",
+      "测试可信度",
+      "交付完整度"
+    ]
+  },
+  "templates": [
+    {
+      "id": "prd",
+      "path": "prd.md",
+      "title": "PRD",
+      "sections": [
+        "背景与目标",
+        "用户与场景",
+        "范围",
+        "验收标准",
+        "风险"
+      ],
+      "content": {
+        "背景与目标": [
+          "写明业务背景、当前问题和预期价值。",
+          "必须包含可观测成功指标。"
+        ],
+        "用户与场景": [
+          "列出目标用户、触发场景和主路径。",
+          "说明不覆盖的用户或场景。"
+        ],
+        "范围": [
+          "明确 in scope、out of scope 和依赖。",
+          "范围变更必须进入决策记录。"
+        ],
+        "验收标准": [
+          "写成可测试或可人工验收的条件。",
+          "至少覆盖核心路径和失败路径。"
+        ],
+        "风险": [
+          "列出产品、技术、测试和交付风险。",
+          "每个风险必须有缓解动作或责任角色。"
+        ]
+      }
+    },
+    {
+      "id": "technical-design",
+      "path": "technical-design.md",
+      "title": "技术方案",
+      "sections": [
+        "模块边界",
+        "实现计划",
+        "依赖与风险",
+        "回滚策略"
+      ],
+      "content": {
+        "模块边界": [
+          "列出受影响模块、接口、数据和配置。",
+          "说明不进入本次需求范围的模块。"
+        ],
+        "实现计划": [
+          "按可验证垂直切片拆分实现步骤。",
+          "每个步骤必须说明验证方式。"
+        ],
+        "依赖与风险": [
+          "列出跨模块、外部系统、数据迁移和发布风险。",
+          "每个风险必须有缓解动作或升级条件。"
+        ],
+        "回滚策略": [
+          "说明失败时如何回滚代码、配置或数据。",
+          "无法回滚的变更必须列为用户决策项。"
+        ]
+      }
+    },
+    {
+      "id": "test-plan",
+      "path": "test-plan.md",
+      "title": "测试计划",
+      "sections": [
+        "核心路径",
+        "异常路径",
+        "边界条件",
+        "验证命令"
+      ],
+      "content": {
+        "核心路径": [
+          "列出用户主流程和必须通过的验收条件。",
+          "核心路径必须能对应 PRD 验收标准。"
+        ],
+        "异常路径": [
+          "列出失败输入、权限不足、依赖不可用等异常场景。",
+          "异常路径必须说明期望错误处理。"
+        ],
+        "边界条件": [
+          "列出空值、极限值、重复提交、并发或兼容性边界。",
+          "无法覆盖的边界必须写入风险。"
+        ],
+        "验证命令": [
+          "记录可运行命令、人工验收方式或截图要求。",
+          "未运行的验证不得标记为通过。"
+        ]
+      }
+    },
+    {
+      "id": "verification-report",
+      "path": "verification-report.md",
+      "title": "验证报告",
+      "sections": [
+        "执行命令",
+        "验证结果",
+        "失败记录",
+        "剩余风险"
+      ],
+      "content": {
+        "执行命令": [
+          "记录实际执行的命令、环境和时间。",
+          "人工验收必须记录验收人或验收依据。"
+        ],
+        "验证结果": [
+          "列出通过、失败和未执行项。",
+          "每个通过项必须关联证据。"
+        ],
+        "失败记录": [
+          "记录失败现象、影响范围和复现方式。",
+          "失败未修复时不得进入完成结论。"
+        ],
+        "剩余风险": [
+          "列出未覆盖场景和可能影响。",
+          "风险不可接受时必须阻断交付。"
+        ]
+      }
+    },
+    {
+      "id": "delivery-summary",
+      "path": "delivery-summary.md",
+      "title": "交付摘要",
+      "sections": [
+        "范围",
+        "验证结果",
+        "风险",
+        "后续建议"
+      ],
+      "content": {
+        "范围": [
+          "说明本次已交付范围和未交付范围。",
+          "引用 PRD 或 issue 作为范围依据。"
+        ],
+        "验证结果": [
+          "列出执行过的命令、测试、截图或人工验收记录。",
+          "未验证项必须单独标注。"
+        ],
+        "风险": [
+          "列出剩余风险、影响、概率和缓解动作。",
+          "风险不可接受时不得标记完成。"
+        ],
+        "后续建议": [
+          "给出下一步迭代、监控或补测建议。",
+          "需要用户决策的事项最多列 3 个。"
+        ]
+      }
+    }
+  ],
+  "domainKnowledge": {
+    "concepts": [
+      "价值假设：需求必须说明业务价值、指标和观测方式。",
+      "验收标准：交付前必须能被测试或人工验收。",
+      "交付证据：完成结论必须绑定命令、日志、截图或验收记录。"
+    ],
+    "methods": [
+      "先澄清价值和范围，再设计技术方案。",
+      "用垂直切片拆分任务，确保每个切片可验证。",
+      "交付前由 QA 和交付经理共同复核证据。"
+    ],
+    "evidenceChecklist": [
+      "PRD 包含目标用户、场景、范围和验收标准。",
+      "技术方案包含模块边界、实现计划和回滚策略。",
+      "交付摘要包含验证命令、日志或人工验收记录。"
+    ],
+    "failureModes": [
+      "没有价值指标就进入实现。",
+      "验收标准不可测试。",
+      "未运行验证却声明完成。",
+      "技术方案包含无关重构。"
+    ]
+  },
+  "capabilityMatrix": [
+    {
+      "capability": "需求价值澄清",
+      "owner": "product-manager",
+      "inputs": [
+        "需求描述",
+        "业务背景",
+        "成功标准"
+      ],
+      "outputs": [
+        "prd",
+        "acceptance-criteria"
+      ],
+      "gates": [
+        "requirement-gate",
+        "value-gate"
+      ],
+      "maturity": "usable"
+    },
+    {
+      "capability": "技术交付设计",
+      "owner": "tech-lead",
+      "inputs": [
+        "PRD",
+        "代码现状",
+        "工程约束"
+      ],
+      "outputs": [
+        "technical-design",
+        "implementation-plan"
+      ],
+      "gates": [
+        "technical-gate"
+      ],
+      "maturity": "usable"
+    },
+    {
+      "capability": "验收证据复核",
+      "owner": "qa-engineer",
+      "inputs": [
+        "验收标准",
+        "实现说明",
+        "验证日志"
+      ],
+      "outputs": [
+        "test-plan",
+        "verification-report"
+      ],
+      "gates": [
+        "test-gate",
+        "evidence-gate"
+      ],
+      "maturity": "validated"
+    }
+  ],
+  "acceptanceScenarios": [
+    {
+      "id": "feature-requirement-delivery",
+      "input": "用户提供一个模糊功能需求，要求团队推进到可交付方案。",
+      "expectedOutputs": [
+        "prd.md",
+        "technical-design.md",
+        "test-plan.md",
+        "delivery-summary.md"
+      ],
+      "mustPassGates": [
+        "requirement-gate",
+        "value-gate",
+        "technical-gate",
+        "test-gate",
+        "delivery-gate"
+      ],
+      "failureExamples": [
+        "没有价值指标就输出实现计划。",
+        "技术方案没有回滚策略。",
+        "交付摘要没有验证证据。"
+      ]
+    },
+    {
+      "id": "delivery-evidence-review",
+      "input": "用户要求复核一个已完成交付是否可以验收。",
+      "expectedOutputs": [
+        "verification-report.md",
+        "delivery-summary.md"
+      ],
+      "mustPassGates": [
+        "evidence-gate",
+        "delivery-gate"
+      ],
+      "failureExamples": [
+        "未运行验证却声明完成。",
+        "忽略未解决风险。",
+        "没有列出后续决策项。"
+      ]
+    }
+  ],
+  "dataContracts": [
+    {
+      "source": "用户需求与业务上下文",
+      "freshness": "必须记录当前对话或文档来源；需求变更后需重新确认。",
+      "requiredFields": [
+        "目标用户",
+        "业务场景",
+        "成功指标",
+        "范围边界"
+      ],
+      "missingDataPolicy": "缺少目标用户或成功指标时停止进入实现计划。",
+      "allowedUse": [
+        "PRD",
+        "任务拆分",
+        "验收标准"
+      ]
+    },
+    {
+      "source": "项目代码与验证证据",
+      "freshness": "必须来自当前工作区命令、日志、测试或人工验收记录。",
+      "requiredFields": [
+        "命令或证据路径",
+        "执行结果",
+        "时间",
+        "剩余风险"
+      ],
+      "missingDataPolicy": "缺少验证证据时只能标记为待验证，不能标记完成。",
+      "allowedUse": [
+        "技术方案",
+        "验证报告",
+        "交付摘要"
+      ]
+    }
+  ],
+  "externalSkills": {
+    "skills": [
+      {
+        "id": "code-review",
+        "name": "Code Review",
+        "package": "example/code-review@latest",
+        "qualityTier": "candidate",
+        "roles": [
+          "tech-lead",
+          "qa-engineer"
+        ],
+        "keywords": [
+          "review",
+          "code",
+          "quality"
+        ],
+        "useWhen": [
+          "交付前需要代码质量检查"
+        ]
+      }
+    ],
+    "roleMap": [
+      {
+        "role": "tech-lead",
+        "skills": [
+          "code-review"
+        ]
+      },
+      {
+        "role": "qa-engineer",
+        "skills": [
+          "code-review"
+        ]
+      }
+    ],
+    "adapters": [
+      {
+        "id": "code-review-adapter",
+        "skill": "code-review",
+        "provider": "external-skill",
+        "inputSchema": [
+          "projectPath",
+          "changedFiles",
+          "reviewScope",
+          "riskLevel"
+        ],
+        "outputSchema": [
+          "findings",
+          "severity",
+          "fileReferences",
+          "recommendedFixes"
+        ],
+        "auth": "user-approval",
+        "fallback": "未获授权时使用本地静态阅读和 npm test 结果作为审查证据。",
+        "verifyCommand": "node scripts/list-external-skills.js --role tech-lead --query review"
+      }
+    ],
+    "installPolicy": "外部 Skill 仅作为候选能力，必须经用户明确授权后安装。"
+  },
+  "scripts": {
+    "includeContextBuilder": true,
+    "includeExternalSkillInstaller": true,
+    "includeValidation": true
+  },
+  "riskControls": {
+    "domainRiskLevel": "medium",
+    "requiredDisclaimers": [
+      "交付结论必须基于当前项目上下文和可用验证证据。"
+    ],
+    "blockedClaims": [
+      "不得在未运行验证时声称已验证。"
+    ],
+    "evidenceRules": [
+      "所有完成结论必须包含命令、日志、截图、数据来源或人工验收记录。"
+    ]
+  },
+  "output": {
+    "defaultDirectory": "<skills-root>/product-rd-team",
+    "overwritePolicy": "block"
+  }
+}

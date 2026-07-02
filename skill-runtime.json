@@ -1,0 +1,99 @@
+{
+  "$schema": "./schemas/generated-skill.schema.json",
+  "schemaVersion": "1.0.0",
+  "skill": {
+    "id": "ai-team-build",
+    "name": "AI Team Build Skill",
+    "version": "0.1.0",
+    "entry": "SKILL.md",
+    "description": "Builds complete agent-readable AI team skills from a team specification."
+  },
+  "runtime": {
+    "node": ">=18",
+    "packageManager": "npm",
+    "requiredCommands": [
+      "node",
+      "npm"
+    ],
+    "optionalCommands": [
+      "git",
+      "npx"
+    ],
+    "environmentVariables": []
+  },
+  "entrypoints": {
+    "skill": "SKILL.md",
+    "readme": "README.md",
+    "commands": "commands/team-build.md",
+    "validation": "scripts/validate-structure.js"
+  },
+  "install": {
+    "packageName": "ai-team-build",
+    "supportedTargets": [
+      "trae",
+      "codex",
+      "claude",
+      "generic-agent"
+    ],
+    "postInstall": [
+      "npm test"
+    ],
+    "requiredFiles": [
+      "SKILL.md",
+      "README.md",
+      "package.json",
+      "skill-runtime.json",
+      "commands/",
+      "docs/",
+      "schemas/",
+      "assets/templates/",
+      "scripts/",
+      "domain-packs/",
+      "examples/",
+      "fixtures/"
+    ],
+    "methods": [
+      {
+        "id": "git-clone",
+        "label": "Git clone",
+        "command": "git clone https://github.com/AISuperXiang/ai-team-build.git ai-team-build",
+        "verify": "cd ai-team-build && npm test"
+      },
+      {
+        "id": "current-directory",
+        "label": "Use this repository directory",
+        "command": "npm test",
+        "verify": "npm test"
+      },
+      {
+        "id": "manual-copy",
+        "label": "Manual directory copy",
+        "instructions": [
+          "Copy this repository directory into your agent skills root using your platform's file manager or deployment tool.",
+          "Run npm test from the copied directory before registering the skill."
+        ],
+        "verify": "npm test"
+      }
+    ]
+  },
+  "agentHints": {
+    "readOrder": [
+      "SKILL.md",
+      "commands/team-build.md",
+      "schemas/team-spec.schema.json",
+      "docs/reference-standard.md",
+      "docs/generation-methodology.md",
+      "docs/team-scoring-rubric.md",
+      "domain-packs/README.md"
+    ],
+    "sourceRepository": "https://github.com/AISuperXiang/ai-team-build.git",
+    "environmentPolicy": "Run Node scripts from the skill root. Core generation must not require network access or credentials.",
+    "generationPolicy": "Create or review team-spec.json before generating files. Natural-language goals may be synthesized through domain-packs. Default output is <skills-root>/<skill.id> unless the spec or command sets another output directory. The runtime resolves <skills-root> from AI_TEAM_BUILD_SKILLS_ROOT or the parent of this skill directory. Always score the generated team and write evaluation-report.md.",
+    "externalSkillPolicy": "Generated team skills may declare external skills, but installation requires explicit user authorization."
+  },
+  "privacy": {
+    "portable": true,
+    "omitLocalSkillNames": true,
+    "policy": "Do not store environment-specific, locally downloaded, private, or company-internal skill names in generated runtime files."
+  }
+}

@@ -1,0 +1,3 @@
+# Quality Rubrics
+
+{{docs.rubrics}}
