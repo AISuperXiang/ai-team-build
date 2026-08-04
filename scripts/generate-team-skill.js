@@ -70,6 +70,66 @@ function defaultOwner(spec) {
   return delivery ? delivery.id : spec.members[0].id;
 }
 
+function resolveTeamDesign(spec) {
+  return spec.teamDesign || {
+    problemStatement: spec.skill.primaryValue,
+    mission: `为 ${spec.skill.targetUsers.join("、")} 提供 ${spec.skill.domain} 专家协作与可验证交付。`,
+    targetOutcomes: [spec.skill.primaryValue],
+    stakeholders: spec.skill.targetUsers,
+    constraints: ["遵守风险控制、数据契约、授权边界和证据要求。"],
+    nonGoals: ["不执行超出用户授权、团队能力或风险边界的任务。"],
+    assumptions: ["领域事实、数据和约束由用户输入、可信来源或人工复核提供。"],
+    valueMetrics: [{
+      name: "代表性任务可交付率",
+      baseline: "待采集",
+      target: "核心验收场景均有产物、证据和风险闭环",
+      evidenceSource: "acceptance scenarios 和人工验收记录",
+      reviewCadence: "每次交付后"
+    }]
+  };
+}
+
+function resolveGovernance(spec) {
+  const highRisk = spec.riskControls.domainRiskLevel === "high";
+  const humanReview = spec.riskControls.humanReview || {
+    required: highRisk,
+    accountableRole: highRisk ? defaultOwner(spec) : "",
+    requiredWhen: highRisk ? ["高风险结论或不可逆操作进入交付前。"] : [],
+    blockedWithoutApproval: highRisk
+  };
+  return spec.governance || {
+    defaultComplexityLevel: highRisk ? "L" : "M",
+    defaultExecutionProfile: highRisk ? "assurance" : "standard",
+    targetVerificationLevel: highRisk ? "V3" : "V2",
+    roleModes: ["active", "consulted", "not_applicable"],
+    reassessmentTriggers: [
+      "范围扩大、验证失败或出现 P0/P1 风险。",
+      "出现跨领域依赖、敏感数据、权限或外部副作用。"
+    ],
+    requiredGates: [
+      "role-activation-gate",
+      "value-gate",
+      "decision-gate",
+      "handoff-gate",
+      "complexity-gate",
+      "evidence-gate",
+      "verification-gate",
+      "delivery-gate"
+    ],
+    humanReview
+  };
+}
+
+function resolveMemberActivation(member, spec) {
+  const governance = resolveGovernance(spec);
+  return member.activation || {
+    activeWhen: member.when_to_load,
+    consultedWhen: ["该角色能对有界问题提供独立判断、证据或风险复核，但不拥有完整阶段产出。"],
+    notApplicableWhen: ["当前任务不涉及该角色职责、输入、风险或质量门禁。"],
+    reassessWhen: governance.reassessmentTriggers
+  };
+}
+
 function safeJoin(root, relativePath) {
   const normalized = path.normalize(relativePath);
   if (path.isAbsolute(normalized) || normalized === "." || normalized.startsWith("..") || normalized.split(path.sep).includes("..")) {
@@ -155,11 +215,14 @@ ${workflowRows}
 
 1. Intake：理解目标、输入、成功标准、风险边界和信息缺口。
 2. Route：按 \`commands/${commandFileName(spec.commands.prefix)}.md\` 和 \`workflows/route-table.md\` 选择主工作流。
-3. Load：只加载当前工作流、相关角色、质量门禁和模板。
-4. Execute：按阶段产出结论、证据、风险和需决策项。
-5. Validate：检查工作流门禁、证据要求和风险控制。
-6. Score：读取 \`evaluation-report.md\`，结合评分短板给出升级建议。
-7. Deliver：输出最终结论、证据索引、评分、风险和下一步建议。
+3. Profile：读取 \`docs/execution-methodology.md\`，选择 \`lightweight\`、\`standard\` 或 \`assurance\`，并按 \`S/M/L/XL\` 分级。
+4. Activate Roles：按 \`docs/role-activation-methodology.md\` 形成 \`rolePlan\`，只加载 \`active\` 或 \`consulted\` 角色。
+5. Load：只加载当前工作流、当前阶段角色、质量门禁和模板。
+6. Workspace：交付类任务创建独立 workspace，记录决策、风险、交接和证据。
+7. Execute：按阶段产出结论、证据、风险和需决策项。
+8. Verify：按 \`docs/verification-methodology.md\` 映射 \`V0-V4\`；结论不得超过证据等级。
+9. Score：读取 \`evaluation-report.md\`，结合评分短板给出升级建议。
+10. Deliver：输出最终结论、证据索引、评分、风险和下一步建议。
 
 ## 风险控制
 
@@ -183,8 +246,12 @@ ${markdownList(spec.riskControls.evidenceRules)}
 
 - 采用的工作流。
 - 参与角色。
+- 角色激活计划、实际贡献和不适用依据。
+- 复杂度、执行档位、当前验证等级和结论边界。
 - 已完成产出。
 - 证据、数据来源或验证结果。
+- 价值假设、指标基线、目标、数据来源和复盘计划。
+- 决策日志、风险台账和角色交接状态。
 - 评分结论和升级建议。
 - 风险、置信度和失效条件。
 - 需用户决策项，最多 3 个。
@@ -194,6 +261,8 @@ ${markdownList(spec.riskControls.evidenceRules)}
 - 新增角色时修改 \`members/\` 并更新 \`members/README.md\`。
 - 新增工作流时修改 \`workflows/\` 并更新 \`workflows/route-table.md\`。
 - 新增命令时修改 \`commands/${commandFileName(spec.commands.prefix)}.md\`。
+- 角色适用场景变化时同步更新 \`docs/role-activation-methodology.md\`、状态模板和状态 Schema。
+- 执行档位、验证等级或必需门禁变化时同步更新运行方法论、状态 Schema 和验收场景。
 - 修改结构或契约后运行 \`npm test\`。
 `;
 }
@@ -263,7 +332,8 @@ npm test
 `;
 }
 
-function renderMember(member) {
+function renderMember(member, spec) {
+  const activation = resolveMemberActivation(member, spec);
   return `---
 id: ${yamlScalar(member.id)}
 name: ${yamlScalar(member.name)}
@@ -293,6 +363,13 @@ ${markdownList(member.outputs)}
 ## 工作逻辑
 
 ${member.workingLogic.map((item, index) => `${index + 1}. ${item}`).join("\n")}
+
+## 场景判断
+
+- \`active\`：${activation.activeWhen.join("；")}。
+- \`consulted\`：${activation.consultedWhen.join("；")}。
+- \`not_applicable\`：${activation.notApplicableWhen.join("；")}。
+- 重新评估：${activation.reassessWhen.join("；")}。
 
 ## 可调用外部能力
 
@@ -367,6 +444,14 @@ ${yamlList(workflow.outputs)}
 
 ${markdownList(workflow.triggers)}
 
+## 角色激活
+
+frontmatter 的 \`members\` 是候选角色池，不代表所有成员都必须执行。进入阶段表前必须在 \`workflow-status.json.rolePlan\` 中为每个候选角色记录 \`active\`、\`consulted\` 或 \`not_applicable\`、场景依据和参与阶段。
+
+- 只加载 \`active\` 与 \`consulted\` 角色。
+- \`not_applicable\` 角色不生成虚假评审、评分或交接产物。
+- 范围扩大、验证失败、跨领域依赖或高风险信号出现时重新评估 \`rolePlan\`。
+
 ## 阶段表
 
 | 阶段 | 负责人 | 动作 | 产出 | 门禁 |
@@ -426,26 +511,48 @@ ${rows}
 }
 
 function renderExecutionProtocol(spec) {
+  const governance = resolveGovernance(spec);
   return `# Execution Protocol
 
 ## 执行状态
 
 所有工作流都应维护状态板：
 
-| 阶段 | 负责人 | 状态 | 当前产出 | 门禁 |
-| --- | --- | --- | --- | --- |
+| 阶段 | 负责人 | 状态 | 当前产出 | 门禁 | 执行档位 | 验证等级 |
+| --- | --- | --- | --- | --- | --- | --- |
 
 状态使用 \`pending\`、\`in_progress\`、\`blocked\`、\`review\`、\`completed\`。
+
+## 角色激活
+
+工作流 frontmatter 中的成员是候选角色池。执行前必须按 \`docs/role-activation-methodology.md\` 在 \`workflow-status.json.rolePlan\` 中记录每个候选角色的模式、场景依据和参与阶段。
+
+## 默认治理
+
+- 默认复杂度：\`${governance.defaultComplexityLevel}\`
+- 默认执行档位：\`${governance.defaultExecutionProfile}\`
+- 目标验证等级：\`${governance.targetVerificationLevel}\`
+- 任何范围扩大、验证失败、敏感数据、权限或外部副作用都只能升级档位，不能降级。
 
 ## 通用步骤
 
 1. Intake：明确目标、输入、成功标准、风险和缺口。
 2. Route：选择一个主工作流。
-3. Load：只加载当前阶段需要的成员文件、模板和门禁。
-4. Execute：按阶段推进。
-5. Validate：检查门禁、证据和风险。
-6. Score：按 \`evaluation-report.md\` 输出评分、短板和升级建议。
-7. Deliver：输出结论、证据、评分、风险和下一步。
+3. Profile：读取 \`docs/execution-methodology.md\`，确定复杂度、执行档位和目标验证等级。
+4. Activate Roles：只加载 \`active\` / \`consulted\` 角色；\`not_applicable\` 角色记录依据后不生成形式化产物。
+5. Load：只加载当前阶段需要的成员文件、模板和门禁。
+6. Workspace：创建独立任务目录，落盘 decision、risk、handoff、status 和 evidence。
+7. Execute：按阶段推进；实现写入默认由一个负责人拥有，并行评审必须冻结输入和写入边界。
+8. Verify：按 \`docs/verification-methodology.md\` 将证据映射为 \`V0-V4\`。
+9. Score：不适用维度标记 \`N/A\`；评分不得抬高验证结论。
+10. Deliver：输出结论、证据、档位、验证等级、价值、决策、风险和下一步。
+
+## 停止条件
+
+- 上一阶段必需门禁失败。
+- 高风险结论缺少人工责任人、证据或批准。
+- 当前证据不足以支撑目标验证等级。
+- 角色或并行写入责任发生冲突且尚未裁决。
 
 ## 风险要求
 
@@ -493,9 +600,9 @@ ${rows}
 
 1. 解析指令后读取目标工作流。
 2. 读取 \`workflows/execution-protocol.md\`。
-3. 建立状态板。
-4. 加载工作流声明的成员文件。
-5. 按阶段执行并检查质量门禁、证据和风险边界。
+3. 读取执行、角色激活和验证方法论，建立状态板与 \`rolePlan\`。
+4. 只加载 \`active\` 或 \`consulted\` 的成员文件。
+5. 按阶段执行并检查价值、决策、交接、复杂度、证据、验证和风险门禁。
 
 ## 失败处理
 
@@ -527,6 +634,10 @@ function renderDocsReadme(spec) {
 - \`quality-gates.md\`
 - \`quality-rubrics.md\`
 - \`handoff-contract.md\`
+- \`team-operating-model.md\`
+- \`execution-methodology.md\`
+- \`verification-methodology.md\`
+- \`role-activation-methodology.md\`
 - \`capability-matrix.md\`
 - \`acceptance-scenarios.md\`
 - \`integrations/data-contracts.md\`
@@ -537,12 +648,155 @@ ${markdownList(spec.riskControls.requiredDisclaimers)}
 `;
 }
 
+function renderTeamOperatingModel(spec) {
+  const design = resolveTeamDesign(spec);
+  const governance = resolveGovernance(spec);
+  const metricRows = design.valueMetrics.map((metric) => tableRow([
+    metric.name,
+    metric.baseline,
+    metric.target,
+    metric.evidenceSource,
+    metric.reviewCadence
+  ])).join("\n");
+  return `# Team Operating Model
+
+## 问题与使命
+
+- 问题：${design.problemStatement}
+- 使命：${design.mission}
+
+## 目标结果
+
+${markdownList(design.targetOutcomes)}
+
+## 利益相关方
+
+${markdownList(design.stakeholders)}
+
+## 约束、非目标与假设
+
+### 约束
+
+${markdownList(design.constraints)}
+
+### 非目标
+
+${markdownList(design.nonGoals)}
+
+### 假设
+
+${markdownList(design.assumptions)}
+
+## 价值指标
+
+| 指标 | 基线 | 目标 | 证据来源 | 复盘周期 |
+| --- | --- | --- | --- | --- |
+${metricRows}
+
+## 治理默认值
+
+- 复杂度：\`${governance.defaultComplexityLevel}\`
+- 执行档位：\`${governance.defaultExecutionProfile}\`
+- 目标验证等级：\`${governance.targetVerificationLevel}\`
+- 必需门禁：${governance.requiredGates.map((gate) => `\`${gate}\``).join("、")}
+- 人工复核：${governance.humanReview.required ? `必须由 \`${governance.humanReview.accountableRole}\` 复核；无批准不得交付。` : "按风险信号升级。"}
+`;
+}
+
+function renderExecutionMethodology(spec) {
+  const governance = resolveGovernance(spec);
+  return `# Execution Methodology
+
+## 执行档位
+
+| 档位 | 适用条件 | 不可省略项 |
+| --- | --- | --- |
+| \`lightweight\` | S 级、单一有界、可逆、无权限/数据/外部副作用 | 真实上下文、目标行为、范围、验证和结论边界 |
+| \`standard\` | 默认；多角色、多模块或需要独立验证 | 决策、交接、风险、证据索引和评分 |
+| \`assurance\` | L/XL、高风险、敏感数据、权限、不可逆操作 | 独立风险复核、人工责任、灰度/回滚、运行时验证 |
+
+本团队默认使用 \`${governance.defaultExecutionProfile}\`。范围扩大、验证失败、公开契约变化、敏感数据、权限或 P0/P1 风险会触发升级；紧急程度不能降低档位。
+
+## 复杂度
+
+- S：单角色或小范围、可逆任务。
+- M：多角色或有限跨模块任务，需要风险登记和回归范围。
+- L：跨模块、跨端、数据或高发布风险，必须拆里程碑、QA、灰度和回滚。
+- XL：跨团队或高资损/合规风险，必须先确认阶段计划和责任人。
+
+## 并行边界
+
+- 默认顺序执行，避免重复读取和上下文分叉。
+- 只有输入已冻结、问题互相独立且写入范围不冲突时才并行。
+- 子任务必须声明问题边界、预期证据、只读或独占写范围和冲突裁决者。
+- 实现产物默认由一个负责人修改；意见数量不能替代证据。
+`;
+}
+
+function renderVerificationMethodology(spec) {
+  const governance = resolveGovernance(spec);
+  return `# Verification Methodology
+
+## V0-V4
+
+| 等级 | 证据 | 允许结论 |
+| --- | --- | --- |
+| V0 | 未验证或仅推理 | 只能描述假设或方案 |
+| V1 | 静态审查、格式、schema、lint | 只能声明静态约束通过 |
+| V2 | 可重复脚本、单测、集成或契约模拟 | 只能声明受测行为通过 |
+| V3 | 运行时、端到端或真实关键路径 | 可声明核心路径通过，保留环境风险 |
+| V4 | 真实验收、灰度或上线收益观测 | 可声明交付效果，附数据来源和时间 |
+
+目标等级为 \`${governance.targetVerificationLevel}\`，但任务初始状态始终是 \`V0\`。生成器结构校验不代表团队业务能力通过。
+
+## 证据规则
+
+- 每个“完成、通过、可交付、收益可观测”结论必须绑定证据索引。
+- 无法验证时降低结论，并记录原因、影响、未覆盖范围和下一步。
+- 高风险输出必须满足人工复核要求，自动化证据不能替代法定或持牌责任。
+`;
+}
+
 function renderQualityGates(spec) {
+  const governance = resolveGovernance(spec);
   return `# Quality Gates
 
-## 通用门禁
+## 领域门禁
 
 ${markdownList(spec.docs.qualityGates)}
+
+## role-activation-gate
+
+- 每个候选角色必须记录 \`active\`、\`consulted\` 或 \`not_applicable\`、理由和参与阶段。
+- \`not_applicable\` 角色不得生成虚假产物或评分。
+
+## value-gate
+
+- 目标用户、价值假设、指标基线、目标、证据来源、成本边界和复盘计划明确。
+
+## decision-gate
+
+- 关键范围、优先级、方案取舍、风险和延期项写入决策记录。
+
+## handoff-gate
+
+- 阶段切换必须交接背景、决策、问题、风险、产物、验证和角色计划。
+
+## complexity-gate
+
+- 任务按 S/M/L/XL 分级；L/XL 必须拆里程碑、风险评审、回滚和复盘。
+
+## evidence-gate
+
+- 所有完成与验证结论有可追踪证据；无法采证时降低结论。
+
+## verification-gate
+
+- \`verificationLevel\` 与证据类型一致，结论不得超过 \`V0-V4\` 上限。
+
+## human-review-gate
+
+- 人工复核要求：${governance.humanReview.required ? `必须由 \`${governance.humanReview.accountableRole}\` 复核，无批准不得交付。` : "仅在风险触发时升级。"}
 
 ## 风险声明
 
@@ -569,8 +823,11 @@ ${markdownList(spec.docs.rubrics)}
 
 - 结论必须带证据来源、置信度、反向证据和失效条件。
 - 高风险输出必须通过免责声明、禁止性承诺和人工复核检查。
+- 评分前读取执行档位、角色计划和验证等级；N/A 必须有场景依据。
+- V1 只能证明静态约束，不能写成业务行为或用户验收通过。
 - 方法论文档和交付模板不得为空壳，不得仅保留待补齐占位。
-- A 级团队必须包含验收场景、数据契约和能力矩阵。
+- A 级蓝图必须包含问题/价值模型、治理模型、验收场景、数据契约和能力矩阵。
+- 字母评分描述蓝图质量，不等同真实业务能力认证。
 
 ## 高风险输出要求
 
@@ -579,6 +836,60 @@ ${markdownList(spec.riskControls.requiredDisclaimers)}
 ${markdownList(spec.riskControls.blockedClaims)}
 
 ${markdownList(spec.riskControls.evidenceRules)}
+`;
+}
+
+function renderRoleActivationMethodology(spec) {
+  const governance = resolveGovernance(spec);
+  const rows = spec.members.map((member) => {
+    const activation = resolveMemberActivation(member, spec);
+    return tableRow([
+      member.name,
+      `\`${member.id}\``,
+      activation.activeWhen.join("；"),
+      activation.consultedWhen.join("；"),
+      activation.notApplicableWhen.join("；")
+    ]);
+  }).join("\n");
+
+  return `# Role Activation Methodology
+
+## 原则
+
+工作流 frontmatter 中的成员是候选池，不是默认全量参与名单。每个任务在执行前都必须建立 \`rolePlan\`，避免形式化协作、重复阅读和无证据评分。
+
+\`\`\`json
+{
+  "role": "member-id",
+  "mode": "active",
+  "reason": "触发该角色参与的场景依据。",
+  "stages": ["阶段名称"]
+}
+\`\`\`
+
+\`mode\` 只能是：
+
+- \`active\`：负责决策、产出、实现、验证或门禁。
+- \`consulted\`：仅在明确范围内提供评审、咨询或证据补充。
+- \`not_applicable\`：当前范围明确不适用；\`stages\` 必须为空，且不得生成虚假产物。
+
+## 角色场景矩阵
+
+| 角色 | ID | active 信号 | consulted 信号 | not_applicable 信号 |
+| --- | --- | --- | --- | --- |
+${rows}
+
+## 重评条件
+
+${markdownList(governance.reassessmentTriggers)}
+
+触发后必须重新评估 \`rolePlan\`，并同步更新状态、交接、评分和验证范围。
+
+## 评分与交付
+
+- 未激活领域不得给无证据评分；相关维度应标为 \`N/A\` 并说明依据。
+- 交付摘要必须记录所有角色的实际贡献或未参与原因。
+- \`active\` 角色必须有可追溯的产出、证据或门禁结论。
 `;
 }
 
@@ -596,6 +907,10 @@ function renderHandoffContract() {
 - 风险
 - 产出物
 - 验证或证据
+- \`rolePlan\` 及本阶段责任
+- 执行档位、验证等级和未覆盖范围
+
+并行交接还必须包含冻结输入、只读或独占写范围、依赖关系和冲突裁决者。实现产物默认由一个负责人修改。
 
 ## 子 Agent 输出契约
 
@@ -610,6 +925,7 @@ function renderHandoffContract() {
 }
 
 function renderWorkflowStatus(spec) {
+  const governance = resolveGovernance(spec);
   const stages = spec.workflows.flatMap((workflow) => workflow.stages.map((stage) => ({
     name: `${workflow.title} / ${stage.name}`,
     owner: stage.owner,
@@ -621,8 +937,20 @@ function renderWorkflowStatus(spec) {
   return {
     workflow: "",
     requirementFolder: "",
-    complexityLevel: "S",
+    complexityLevel: governance.defaultComplexityLevel,
+    executionProfile: governance.defaultExecutionProfile,
+    verificationLevel: "V0",
+    targetVerificationLevel: governance.targetVerificationLevel,
+    currentStage: "",
+    blockers: [],
+    uncoveredRisks: [],
     updatedAt: "",
+    rolePlan: spec.members.map((member) => ({
+      role: member.id,
+      mode: "not_applicable",
+      reason: "Template: decide this role's applicability before execution.",
+      stages: []
+    })),
     stages
   };
 }
@@ -682,10 +1010,137 @@ workspace/
     ├── workflow-status.json
     ├── decision-log.md
     ├── risk-register.md
+    ├── role-handoff.md
     ├── delivery-summary.md
     └── evidence/
+        └── README.md
 \`\`\`
+
+- \`workflow-status.json\` 必须记录复杂度、执行档位、当前/目标验证等级、\`rolePlan\`、阻塞和未覆盖风险。
+- 每次阶段切换更新 \`role-handoff.md\`；关键取舍写入 \`decision-log.md\`。
+- \`evidence/\` 只保存命令、日志、数据来源、截图说明或人工验收记录，不保存凭据。
 `;
+}
+
+function renderCoreGovernanceTemplate(relativePath, spec) {
+  const templates = {
+    "assets/templates/decision-log.md": `# Decision Log
+
+用于记录 ${spec.skill.name} 执行中的关键取舍，避免结论失去上下文。
+
+## 记录规则
+
+- 每项决策必须包含唯一 ID、日期、决策人、所属工作流和状态。
+- 写明问题、候选方案、采用方案、证据、权衡、影响范围和失效条件。
+- 标记需要人工批准的决策；批准前不得执行不可逆或高风险操作。
+- 新证据推翻前提时，追加新记录并关联原决策，不覆盖历史。
+
+## 决策条目
+
+| 字段 | 填写要求 |
+| --- | --- |
+| Decision ID | 使用可追踪的稳定标识 |
+| Context | 说明问题、约束、利益相关方和截止条件 |
+| Options | 列出真实可选项及各自代价 |
+| Decision | 写明采用方案与责任人 |
+| Evidence | 引用 evidence index 中的证据 ID |
+| Consequences | 记录收益、代价、风险和后续动作 |
+| Invalidated When | 写明触发复审或撤销的条件 |
+| Approval | 记录人工责任人、结论和时间 |
+`,
+    "assets/templates/risk-register.md": `# Risk Register
+
+用于持续维护 ${spec.skill.name} 的风险、触发信号和处置责任。
+
+## 记录规则
+
+- 每项风险必须说明概率、影响、严重度、证据和责任人。
+- 分开记录已缓解风险、未覆盖风险和已接受风险。
+- P0/P1、高风险结论、敏感数据、权限或外部副作用必须升级人工复核。
+- 风险关闭必须附验证证据；没有证据只能标记为已缓解，不能标记为已关闭。
+
+## 风险条目
+
+| 字段 | 填写要求 |
+| --- | --- |
+| Risk ID | 使用可追踪的稳定标识 |
+| Description | 描述风险事件、原因和受影响对象 |
+| Probability / Impact | 分别给出等级及判断依据 |
+| Trigger | 写明可观察的预警信号 |
+| Mitigation | 记录预防、降级、回滚或转人工方案 |
+| Owner | 指定唯一责任角色 |
+| Evidence | 引用验证记录或数据来源 |
+| Status | 使用 open、mitigated、accepted、closed |
+`,
+    "assets/templates/role-handoff.md": `# Role Handoff
+
+用于在 ${spec.skill.name} 的角色和阶段之间传递可执行上下文。
+
+## 交接规则
+
+- 只在真实发生责任转移、评审或咨询时创建交接，不为 not_applicable 角色伪造记录。
+- 交接必须包含目标、已完成工作、输入产物、未决问题、风险、证据和验收条件。
+- 接收方必须明确 accepted、needs_changes 或 blocked；沉默不视为接受。
+- 范围扩大、验证失败或风险升级时重新评估 rolePlan。
+
+## 交接条目
+
+| 字段 | 填写要求 |
+| --- | --- |
+| From / To | 记录交出与接收角色 |
+| Stage | 记录所属工作流和阶段 |
+| Objective | 说明接收方要完成的具体结果 |
+| Inputs | 列出文件、决策和证据 ID |
+| Open Questions | 仅保留会影响下一阶段的问题 |
+| Risks / Blockers | 关联风险 ID 和阻断条件 |
+| Acceptance Criteria | 写明接收完成的可验证标准 |
+| Acknowledgement | 记录接收状态、责任人和时间 |
+`,
+    "assets/templates/evidence-index.md": `# Evidence Index
+
+用于索引 ${spec.skill.name} 的事实来源、验证命令和人工验收记录。
+
+## 证据规则
+
+- 区分用户输入、外部来源、工具输出、推断和人工确认。
+- 记录来源、采集时间、适用范围、可信度和失效时间。
+- 命令证据保留命令、关键输出、退出码和执行环境；不得写入凭据。
+- 结论只能引用足以支持其验证等级的证据，缺口必须显式列出。
+
+## 证据条目
+
+| 字段 | 填写要求 |
+| --- | --- |
+| Evidence ID | 使用可被决策、风险和交付引用的标识 |
+| Type | 标记 input、source、command、artifact 或 human-review |
+| Source | 记录文件、URL、工具或责任人 |
+| Collected At | 记录采集时间和时区 |
+| Claim Supported | 说明该证据支持或反驳的结论 |
+| Verification Level | 标记当前可支持的 V0-V4 等级 |
+| Limitations | 记录时效、偏差、缺失和不适用范围 |
+`,
+    "assets/templates/delivery-summary.md": `# Delivery Summary
+
+用于交付 ${spec.skill.name} 的最终结论、证据边界和后续责任。
+
+## 必填内容
+
+- 目标、采用工作流、复杂度和执行档位。
+- rolePlan、各角色实际贡献和 not_applicable 依据。
+- 已交付产物、关键决策、未解决阻塞和未覆盖风险。
+- 当前验证等级、目标验证等级、证据索引和未验证范围。
+- 价值指标的基线、目标、数据来源和复盘时间。
+- 高风险事项的人工责任人、批准状态和禁止执行项。
+
+## 交付判定
+
+交付结论只能使用 completed、partial 或 blocked。必须写明结论失效条件、下一步动作、责任人和时间边界；工厂结构验证不得表述为真实业务效果已验证。
+`
+  };
+
+  const content = templates[relativePath];
+  if (!content) throw new Error(`Unknown core governance template: ${relativePath}`);
+  return content;
 }
 
 function baseSchema(title, required, properties) {
@@ -745,11 +1200,45 @@ function renderCommandSchema(title) {
 }
 
 function renderStatusSchema(title) {
-  return baseSchema(title, ["workflow", "requirementFolder", "complexityLevel", "updatedAt", "stages"], {
+  return baseSchema(title, [
+    "workflow",
+    "requirementFolder",
+    "complexityLevel",
+    "executionProfile",
+    "verificationLevel",
+    "targetVerificationLevel",
+    "currentStage",
+    "blockers",
+    "uncoveredRisks",
+    "updatedAt",
+    "rolePlan",
+    "stages"
+  ], {
     workflow: { type: "string" },
     requirementFolder: { type: "string" },
     complexityLevel: { type: "string", enum: ["S", "M", "L", "XL"] },
+    executionProfile: { type: "string", enum: ["lightweight", "standard", "assurance"] },
+    verificationLevel: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+    targetVerificationLevel: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+    currentStage: { type: "string" },
+    blockers: { type: "array", items: { type: "string" } },
+    uncoveredRisks: { type: "array", items: { type: "string" } },
     updatedAt: { type: "string" },
+    rolePlan: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        required: ["role", "mode", "reason", "stages"],
+        properties: {
+          role: { type: "string", minLength: 1 },
+          mode: { type: "string", enum: ["active", "consulted", "not_applicable"] },
+          reason: { type: "string", minLength: 1 },
+          stages: { type: "array", items: { type: "string", minLength: 1 } }
+        },
+        additionalProperties: false
+      }
+    },
     stages: {
       type: "array",
       items: {
@@ -770,12 +1259,22 @@ function renderStatusSchema(title) {
 }
 
 function renderRuntimeSchema(title) {
-  return baseSchema(title, ["schemaVersion", "skill", "runtime", "entrypoints", "install"], {
+  return baseSchema(title, ["schemaVersion", "skill", "runtime", "entrypoints", "install", "agentHints"], {
     schemaVersion: { type: "string", minLength: 1 },
     skill: { type: "object" },
     runtime: { type: "object" },
     entrypoints: { type: "object" },
-    install: { type: "object" }
+    install: { type: "object" },
+    agentHints: {
+      type: "object",
+      required: ["readOrder", "executionPolicy", "roleActivationPolicy", "verificationPolicy"],
+      properties: {
+        readOrder: stringArraySchema(),
+        executionPolicy: { type: "string", minLength: 1 },
+        roleActivationPolicy: { type: "string", minLength: 1 },
+        verificationPolicy: { type: "string", minLength: 1 }
+      }
+    }
   });
 }
 
@@ -795,9 +1294,14 @@ function renderGeneratedValidateStructureScript(spec) {
     "docs/quality-gates.md",
     "docs/quality-rubrics.md",
     "docs/handoff-contract.md",
+    "docs/team-operating-model.md",
+    "docs/execution-methodology.md",
+    "docs/verification-methodology.md",
+    "docs/role-activation-methodology.md",
     "docs/capability-matrix.md",
     "docs/acceptance-scenarios.md",
     "docs/integrations/data-contracts.md",
+    ...generationPlan.CORE_GOVERNANCE_TEMPLATE_FILES,
     "members/README.md",
     "workflows/README.md",
     "workflows/route-table.md",
@@ -864,6 +1368,7 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage"]);
 const riskControls = ${json(spec.riskControls)};
+const memberIds = ${json(spec.members.map((member) => member.id))};
 const results = [];
 function record(ok, message) { results.push({ ok, message }); }
 function read(relativePath) { return fs.readFileSync(path.join(ROOT, relativePath), "utf8"); }
@@ -891,7 +1396,9 @@ function parseFrontmatter(content) {
       continue;
     }
     const arrayMatch = line.match(/^\\s+-\\s+(.+)$/);
-    if (arrayMatch && currentKey && Array.isArray(data[currentKey])) data[currentKey].push(arrayMatch[1].trim());
+    if (arrayMatch && currentKey && Array.isArray(data[currentKey])) {
+      data[currentKey].push(arrayMatch[1].trim().replace(/^[\\"']|[\\"']$/g, ""));
+    }
   }
   return data;
 }
@@ -929,6 +1436,30 @@ const readme = read("README.md");
 const skill = read("SKILL.md");
 record(readme.includes("面向人类用户"), "README states human-facing responsibility");
 record(skill.includes("Agent"), "SKILL states Agent-facing responsibility");
+const roleActivation = read("docs/role-activation-methodology.md");
+record(roleActivation.includes("rolePlan"), "role activation methodology defines rolePlan");
+record(["active", "consulted", "not_applicable"].every((mode) => roleActivation.includes(mode)), "role activation methodology defines participation modes");
+record(roleActivation.includes("N/A") && /重新评估|re-?evaluate/i.test(roleActivation), "role activation methodology defines N/A and reassessment");
+const executionMethodology = read("docs/execution-methodology.md");
+record(["lightweight", "standard", "assurance"].every((profile) => executionMethodology.includes(profile)), "execution methodology defines all profiles");
+const verificationMethodology = read("docs/verification-methodology.md");
+record(["V0", "V1", "V2", "V3", "V4"].every((level) => verificationMethodology.includes(level)), "verification methodology defines V0-V4");
+const runtime = parseJson("skill-runtime.json");
+record(Boolean(runtime && runtime.agentHints && runtime.agentHints.executionPolicy), "runtime defines execution policy");
+record(Boolean(runtime && runtime.agentHints && runtime.agentHints.roleActivationPolicy), "runtime defines role activation policy");
+record(Boolean(runtime && runtime.agentHints && runtime.agentHints.verificationPolicy), "runtime defines verification boundary");
+const workflowStatus = parseJson("assets/templates/workflow-status.json");
+const rolePlan = workflowStatus && workflowStatus.rolePlan;
+record(["lightweight", "standard", "assurance"].includes(workflowStatus && workflowStatus.executionProfile), "workflow-status has valid executionProfile");
+record(/^V[0-4]$/.test(String(workflowStatus && workflowStatus.verificationLevel)), "workflow-status has valid verificationLevel");
+record(/^V[0-4]$/.test(String(workflowStatus && workflowStatus.targetVerificationLevel)), "workflow-status has valid targetVerificationLevel");
+record(Array.isArray(rolePlan) && rolePlan.length === memberIds.length, "workflow-status rolePlan covers every member");
+for (const item of rolePlan || []) {
+  record(memberIds.includes(item.role), "workflow-status rolePlan references a declared member: " + (item.role || "unknown"));
+  record(["active", "consulted", "not_applicable"].includes(item.mode), "workflow-status rolePlan mode is valid: " + (item.mode || "missing"));
+  record(Boolean(item.reason), "workflow-status rolePlan has a reason: " + (item.role || "unknown"));
+  record(Array.isArray(item.stages), "workflow-status rolePlan stages is an array: " + (item.role || "unknown"));
+}
 const allRiskText = [skill, read("docs/quality-gates.md"), read("docs/quality-rubrics.md")].join("\\n");
 for (const item of riskControls.requiredDisclaimers || []) record(allRiskText.includes(item), "risk disclaimer present: " + item);
 for (const item of riskControls.blockedClaims || []) record(allRiskText.includes(item), "blocked claim present: " + item);
@@ -941,7 +1472,7 @@ for (const workflowFile of listMarkdownFiles("workflows").filter((file) => !file
   record(stageRows.length > 0, workflowFile + " has executable stage rows");
   const stageOwners = new Set(stageRows.map((row) => row.owner));
   const stageGates = new Set(stageRows.flatMap((row) => row.gates));
-  for (const member of (data && data.members) || []) record(stageOwners.has(member), workflowFile + " declared member owns a stage: " + member);
+  for (const owner of stageOwners) record(((data && data.members) || []).includes(owner), workflowFile + " stage owner is a candidate member: " + owner);
   for (const gate of (data && data.quality_gates) || []) record(stageGates.has(gate), workflowFile + " declared quality gate appears in stage rows: " + gate);
 }
 for (const file of [
@@ -960,7 +1491,19 @@ for (const schemaFile of [
   "schemas/status.schema.json",
   "schemas/skill-runtime.schema.json"
 ]) {
-  record(schemaIsDeep(parseJson(schemaFile)), schemaFile + " has required fields and properties");
+  const schema = parseJson(schemaFile);
+  record(schemaIsDeep(schema), schemaFile + " has required fields and properties");
+  if (schemaFile === "schemas/status.schema.json") {
+    record(Array.isArray(schema && schema.required) && schema.required.includes("rolePlan"), "status schema requires rolePlan");
+    record(Boolean(schema && schema.properties && schema.properties.rolePlan), "status schema defines rolePlan");
+    record(Array.isArray(schema && schema.required) && schema.required.includes("executionProfile"), "status schema requires executionProfile");
+    record(Array.isArray(schema && schema.required) && schema.required.includes("verificationLevel"), "status schema requires verificationLevel");
+  }
+  if (schemaFile === "schemas/skill-runtime.schema.json") {
+    const agentHints = schema && schema.properties && schema.properties.agentHints;
+    record(Array.isArray(schema && schema.required) && schema.required.includes("agentHints"), "runtime schema requires agentHints");
+    record(Boolean(agentHints && agentHints.properties && agentHints.properties.verificationPolicy), "runtime schema defines verificationPolicy");
+  }
 }
 const adapters = parseJson("external-skills/adapters.json");
 const catalog = parseJson("external-skills/catalog.json");
@@ -1072,7 +1615,7 @@ function renderPackageJson(spec) {
 function renderRuntime(spec, commandFile) {
   return {
     $schema: "./schemas/skill-runtime.schema.json",
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     skill: {
       id: spec.skill.id,
       name: spec.skill.name,
@@ -1136,9 +1679,16 @@ function renderRuntime(spec, commandFile) {
         "SKILL.md",
         commandFile,
         "workflows/route-table.md",
-        "workflows/execution-protocol.md"
+        "workflows/execution-protocol.md",
+        "docs/team-operating-model.md",
+        "docs/execution-methodology.md",
+        "docs/role-activation-methodology.md",
+        "docs/verification-methodology.md"
       ],
       environmentPolicy: "Run Node scripts from the skill root. Core workflows must not require credentials or external services.",
+      executionPolicy: "Select complexity, executionProfile, rolePlan, and target verification level before execution. Conclusions must not exceed evidence-backed V0-V4.",
+      roleActivationPolicy: "Treat workflow members as a candidate pool. Record active, consulted, or not_applicable participation with scenario evidence in workflow-status.json.rolePlan before loading role details.",
+      verificationPolicy: "Factory validation proves generated contracts at V2. Real domain capability starts at V0 and only advances with task-specific evidence; blueprint grade does not certify business outcomes.",
       externalSkillPolicy: "Only install external skills from external-skills/catalog.json after explicit user instruction or approval."
     },
     privacy: {
@@ -1184,7 +1734,7 @@ function writeGeneratedSkill(spec, outputDir, options) {
 
   writeRelative("members/README.md", renderMembersReadme(spec));
   for (const member of spec.members) {
-    writeRelative(`members/${member.id}.md`, renderMember(member));
+    writeRelative(`members/${member.id}.md`, renderMember(member, spec));
   }
 
   writeRelative("commands/README.md", renderCommandsReadme(spec));
@@ -1201,6 +1751,9 @@ function writeGeneratedSkill(spec, outputDir, options) {
   writeRelative("docs/quality-gates.md", renderQualityGates(spec));
   writeRelative("docs/quality-rubrics.md", renderQualityRubrics(spec));
   writeRelative("docs/handoff-contract.md", renderHandoffContract(spec));
+  writeRelative("docs/team-operating-model.md", renderTeamOperatingModel(spec));
+  writeRelative("docs/execution-methodology.md", renderExecutionMethodology(spec));
+  writeRelative("docs/verification-methodology.md", renderVerificationMethodology(spec));
   writeRelative("docs/capability-matrix.md", templateEngine.renderCapabilityMatrix(spec));
   writeRelative("docs/acceptance-scenarios.md", templateEngine.renderAcceptanceScenarios(spec));
   writeRelative("docs/integrations/data-contracts.md", templateEngine.renderDataContracts(spec));
@@ -1213,7 +1766,11 @@ function writeGeneratedSkill(spec, outputDir, options) {
   for (const doc of spec.docs.integrations) {
     writeRelative(doc.path, templateEngine.renderDoc(doc));
   }
+  writeRelative("docs/role-activation-methodology.md", renderRoleActivationMethodology(spec));
 
+  for (const templatePath of generationPlan.coreGovernanceTemplateFiles(spec)) {
+    writeRelative(templatePath, renderCoreGovernanceTemplate(templatePath, spec));
+  }
   for (const template of spec.templates) {
     writeRelative(generationPlan.relativeTemplatePath(template), templateEngine.renderTemplateArtifact(template));
   }
@@ -1269,6 +1826,24 @@ function writeGeneratedSkill(spec, outputDir, options) {
       upgradeOpportunityCount: score.upgradeOpportunities.length
     },
     riskControls: spec.riskControls,
+    teamDesign: resolveTeamDesign(spec),
+    governance: resolveGovernance(spec),
+    teamContract: {
+      memberIds: spec.members.map((member) => member.id),
+      workflows: spec.workflows.map((workflow) => ({
+        id: workflow.id,
+        candidateMembers: workflow.members,
+        executionMode: workflow.execution_mode
+      })),
+      executionProfiles: ["lightweight", "standard", "assurance"],
+      verificationLevels: ["V0", "V1", "V2", "V3", "V4"]
+    },
+    verification: {
+      factoryVerificationLevel: "V2",
+      generatedTeamVerificationLevel: "V0",
+      targetVerificationLevel: resolveGovernance(spec).targetVerificationLevel,
+      boundary: "Factory tests validate generated contracts; they do not validate real domain outcomes."
+    },
     acceptanceScenarios: spec.acceptanceScenarios || [],
     dataContracts: spec.dataContracts || [],
     capabilityMatrix: spec.capabilityMatrix || [],

@@ -1,4 +1,5 @@
 {
+  "schemaVersion": "2.0.0",
   "skill": {
     "id": "product-rd-team",
     "name": "Product RD Team Skill",
@@ -10,6 +11,72 @@
       "需要沉淀标准产品研发团队流程的团队"
     ],
     "primaryValue": "把模糊需求推进为有 PRD、有方案、有实现计划、有验证证据和交付摘要的可验收结果。"
+  },
+  "teamDesign": {
+    "problemStatement": "需求从模糊目标进入研发时容易丢失价值、范围、决策、测试和交付证据。",
+    "mission": "用最小充分的产品研发角色，把需求推进为可实现、可验证、可复盘的交付结果。",
+    "targetOutcomes": [
+      "需求价值、范围、非目标和验收标准清晰。",
+      "技术方案、实现、测试、风险和回滚可追踪。",
+      "交付结论与实际验证等级一致。"
+    ],
+    "stakeholders": [
+      "需求提出者",
+      "产品与研发负责人",
+      "最终验收和交付责任人"
+    ],
+    "constraints": [
+      "遵循目标项目既有架构和工程约定。",
+      "没有代码改动或验证证据时不得声称已实现。",
+      "未授权前不调用外部系统或安装外部 Skill。"
+    ],
+    "nonGoals": [
+      "不为低风险局部任务强制激活全部角色。",
+      "不做与当前需求无关的重构。"
+    ],
+    "assumptions": [
+      "目标项目、需求背景和成功标准可由用户输入或仓库探索获得。",
+      "真实运行环境和外部依赖需要用户授权或明确替代验证。"
+    ],
+    "valueMetrics": [
+      {
+        "name": "验收标准证据覆盖率",
+        "baseline": "待首轮项目采集",
+        "target": "所有 must 验收标准均有命令、日志、截图或人工记录",
+        "evidenceSource": "test-plan、evidence 和 delivery-summary",
+        "reviewCadence": "每次交付"
+      }
+    ]
+  },
+  "governance": {
+    "defaultComplexityLevel": "M",
+    "defaultExecutionProfile": "standard",
+    "targetVerificationLevel": "V2",
+    "roleModes": [
+      "active",
+      "consulted",
+      "not_applicable"
+    ],
+    "reassessmentTriggers": [
+      "范围扩大、公开契约变化、验证失败或出现 P0/P1 风险。",
+      "出现跨端、数据、权限、外部副作用或高回滚成本。"
+    ],
+    "requiredGates": [
+      "role-activation-gate",
+      "value-gate",
+      "decision-gate",
+      "handoff-gate",
+      "complexity-gate",
+      "evidence-gate",
+      "verification-gate",
+      "delivery-gate"
+    ],
+    "humanReview": {
+      "required": false,
+      "accountableRole": "",
+      "requiredWhen": [],
+      "blockedWithoutApproval": false
+    }
   },
   "commands": {
     "prefix": "/product-team",
@@ -86,6 +153,20 @@
         "不替研发指定不必要技术实现。",
         "不在价值缺失时推动实现。"
       ],
+      "activation": {
+        "activeWhen": [
+          "需求影响用户行为、范围、优先级、价值或验收标准。"
+        ],
+        "consultedWhen": [
+          "技术任务只需确认用户预期或影响范围。"
+        ],
+        "notApplicableWhen": [
+          "纯内部重构且现有行为和验收标准明确。"
+        ],
+        "reassessWhen": [
+          "范围、用户预期、价值指标或验收条件变化。"
+        ]
+      },
       "externalSkills": [
         "product-planning"
       ]
@@ -139,6 +220,20 @@
         "不做无关重构。",
         "不跳过验证计划。"
       ],
+      "activation": {
+        "activeWhen": [
+          "任务跨模块、接口、数据、权限、迁移或高风险边界。"
+        ],
+        "consultedWhen": [
+          "低风险局部改动只需定向方案复核。"
+        ],
+        "notApplicableWhen": [
+          "已有明确模式、单模块、可逆且无公开契约变化。"
+        ],
+        "reassessWhen": [
+          "影响范围扩大、验证失败或出现权限、数据、安全风险。"
+        ]
+      },
       "externalSkills": [
         "code-review"
       ]
@@ -192,6 +287,20 @@
         "不把未验证说成已验证。",
         "不隐藏回归风险。"
       ],
+      "activation": {
+        "activeWhen": [
+          "存在行为变化、缺陷修复、发布风险或回归范围。"
+        ],
+        "consultedWhen": [
+          "设计阶段只需复核可测性和验证策略。"
+        ],
+        "notApplicableWhen": [
+          "仅产出不可执行草案且没有待验证行为。"
+        ],
+        "reassessWhen": [
+          "验收不可测、验证失败、范围扩大或出现 P0/P1。"
+        ]
+      },
       "externalSkills": [
         "test-generation"
       ]
@@ -244,6 +353,20 @@
         "不把流程状态伪装成完成结果。",
         "不隐藏门禁失败。"
       ],
+      "activation": {
+        "activeWhen": [
+          "standard/assurance 任务、跨角色决策、风险或最终交付。"
+        ],
+        "consultedWhen": [
+          "lightweight 任务只需复核状态和结论边界。"
+        ],
+        "notApplicableWhen": [
+          "不适用；单一负责人可兼任但必须保留交付责任。"
+        ],
+        "reassessWhen": [
+          "角色冲突、门禁失败或交付范围变化。"
+        ]
+      },
       "externalSkills": []
     }
   ],
@@ -518,10 +641,15 @@
     ],
     "qualityGates": [
       "requirement-gate",
+      "role-activation-gate",
       "value-gate",
+      "decision-gate",
+      "handoff-gate",
+      "complexity-gate",
       "technical-gate",
       "test-gate",
       "evidence-gate",
+      "verification-gate",
       "delivery-gate"
     ],
     "rubrics": [
@@ -782,7 +910,20 @@
         "没有价值指标就输出实现计划。",
         "技术方案没有回滚策略。",
         "交付摘要没有验证证据。"
-      ]
+      ],
+      "expectedWorkflow": "requirement-delivery",
+      "expectedProfile": "standard",
+      "minimumVerificationLevel": "V2",
+      "expectedRolePlan": {
+        "active": [
+          "product-manager",
+          "tech-lead",
+          "qa-engineer",
+          "delivery-manager"
+        ],
+        "consulted": [],
+        "notApplicable": []
+      }
     },
     {
       "id": "delivery-evidence-review",
@@ -799,7 +940,21 @@
         "未运行验证却声明完成。",
         "忽略未解决风险。",
         "没有列出后续决策项。"
-      ]
+      ],
+      "expectedWorkflow": "delivery-review",
+      "expectedProfile": "standard",
+      "minimumVerificationLevel": "V2",
+      "expectedRolePlan": {
+        "active": [
+          "qa-engineer",
+          "delivery-manager"
+        ],
+        "consulted": [],
+        "notApplicable": [
+          "product-manager",
+          "tech-lead"
+        ]
+      }
     }
   ],
   "dataContracts": [

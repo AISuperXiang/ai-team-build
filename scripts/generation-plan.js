@@ -1,10 +1,23 @@
 const path = require("path");
 const { commandFileName } = require("./template-utils");
 
+const CORE_GOVERNANCE_TEMPLATE_FILES = [
+  "assets/templates/decision-log.md",
+  "assets/templates/risk-register.md",
+  "assets/templates/role-handoff.md",
+  "assets/templates/evidence-index.md",
+  "assets/templates/delivery-summary.md"
+];
+
 function relativeTemplatePath(template) {
   return template.path.startsWith("assets/templates/")
     ? template.path
     : path.join("assets/templates", template.path);
+}
+
+function coreGovernanceTemplateFiles(spec) {
+  const declaredFiles = new Set((spec.templates || []).map(relativeTemplatePath));
+  return CORE_GOVERNANCE_TEMPLATE_FILES.filter((file) => !declaredFiles.has(file));
 }
 
 function generationCounts(spec) {
@@ -40,7 +53,7 @@ function plannedFilesForSpec(spec) {
   ].map((doc) => doc.path);
   const templateFiles = (spec.templates || []).map(relativeTemplatePath);
 
-  return [
+  return [...new Set([
     "SKILL.md",
     "README.md",
     "evaluation-report.md",
@@ -53,6 +66,10 @@ function plannedFilesForSpec(spec) {
     "docs/quality-gates.md",
     "docs/quality-rubrics.md",
     "docs/handoff-contract.md",
+    "docs/team-operating-model.md",
+    "docs/execution-methodology.md",
+    "docs/verification-methodology.md",
+    "docs/role-activation-methodology.md",
     "docs/capability-matrix.md",
     "docs/acceptance-scenarios.md",
     "docs/integrations/data-contracts.md",
@@ -73,6 +90,7 @@ function plannedFilesForSpec(spec) {
     "workflows/execution-protocol.md",
     "workspace/README.md",
     "assets/templates/workflow-status.json",
+    ...coreGovernanceTemplateFiles(spec),
     "schemas/member.schema.json",
     "schemas/workflow.schema.json",
     "schemas/command.schema.json",
@@ -83,7 +101,7 @@ function plannedFilesForSpec(spec) {
     ...docFiles,
     ...templateFiles,
     ...(spec.scripts.includeContextBuilder ? ["scripts/build-context.js"] : [])
-  ];
+  ])];
 }
 
 function buildGenerationPlan(spec, outputDir, specPath, options = {}) {
@@ -100,7 +118,9 @@ function buildGenerationPlan(spec, outputDir, specPath, options = {}) {
 }
 
 module.exports = {
+  CORE_GOVERNANCE_TEMPLATE_FILES,
   buildGenerationPlan,
+  coreGovernanceTemplateFiles,
   generationCounts,
   plannedFilesForSpec,
   relativeTemplatePath

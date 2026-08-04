@@ -1,0 +1,82 @@
+{
+  "id": "venture-building",
+  "title": "从零创业与企业构建团队包",
+  "description": "用于生成客户发现、方案与产品、GTM、现金 runway、风险和运营交付协作团队。",
+  "keywords": [
+    "创业",
+    "企业家",
+    "公司",
+    "从零开始",
+    "商业模式",
+    "客户发现",
+    "产品市场匹配",
+    "GTM",
+    "融资",
+    "startup",
+    "venture"
+  ],
+  "riskLevel": "medium",
+  "recommendedSpecPath": "../../examples/venture-building-team.team-spec.json",
+  "parameters": {
+    "skillId": {
+      "default": "venture-building-team",
+      "description": "生成团队 Skill 的 kebab-case id。"
+    },
+    "skillName": {
+      "default": "Venture Building Team Skill",
+      "description": "生成团队 Skill 的展示名称。"
+    },
+    "description": {
+      "default": "Customer discovery, offer design, go-to-market, runway, operations, and founder decision workflow skill.",
+      "description": "生成团队 Skill 的一句话说明。"
+    },
+    "domain": {
+      "default": "从零创业与企业构建",
+      "description": "团队覆盖的领域边界。"
+    },
+    "targetUsers": {
+      "default": [
+        "需要从问题机会开始搭建业务的创业者",
+        "需要用小团队验证市场、方案和增长路径的业务负责人"
+      ],
+      "description": "目标用户列表。"
+    },
+    "primaryValue": {
+      "default": "把创业想法推进为有客户证据、有最小方案、有获客路径、有现金流边界和阶段复盘的可执行企业构建计划。",
+      "description": "团队核心价值。"
+    },
+    "commandPrefix": {
+      "default": "/venture-team",
+      "description": "Slash 指令前缀。"
+    },
+    "outputDirectory": {
+      "default": "<skills-root>/venture-building-team",
+      "description": "默认生成目录。"
+    }
+  },
+  "capabilities": [
+    "创业目标与假设组合",
+    "客户与问题验证",
+    "最小可销售方案",
+    "GTM 与转化实验",
+    "Runway 与风险阻断"
+  ],
+  "qualityGates": [
+    "value-gate",
+    "customer-evidence-gate",
+    "offer-gate",
+    "gtm-gate",
+    "runway-gate",
+    "evidence-gate",
+    "verification-gate",
+    "delivery-gate"
+  ],
+  "artifacts": [
+    "venture-brief.md",
+    "customer-evidence.md",
+    "offer-plan.md",
+    "gtm-plan.md",
+    "runway-risk.md",
+    "venture-delivery-summary.md"
+  ]
+}

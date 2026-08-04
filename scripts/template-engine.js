@@ -57,6 +57,7 @@ ${markdownTable(["能力", "负责人", "输入", "输出", "门禁", "成熟度
 
 function renderAcceptanceScenarios(spec) {
   const sections = (spec.acceptanceScenarios || []).map((scenario) => {
+    const rolePlan = scenario.expectedRolePlan || {};
     return `## ${scenario.id}
 
 ### 输入
@@ -70,6 +71,15 @@ ${markdownList(scenario.expectedOutputs)}
 ### 必过门禁
 
 ${markdownList(scenario.mustPassGates)}
+
+### 执行期望
+
+- 预期工作流：${scenario.expectedWorkflow || "未声明"}
+- 执行档位：${scenario.expectedProfile || "未声明"}
+- 最低验证等级：${scenario.minimumVerificationLevel || "未声明"}
+- active：${(rolePlan.active || []).join(", ") || "无"}
+- consulted：${(rolePlan.consulted || []).join(", ") || "无"}
+- not applicable：${(rolePlan.notApplicable || []).join(", ") || "无"}
 
 ### 失败样例
 

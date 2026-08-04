@@ -137,6 +137,64 @@ function slugFromGoal(goal) {
   return base.endsWith("-team") ? base : `${base}-team`;
 }
 
+function inferRiskLevel(goal) {
+  const normalized = String(goal || "").toLowerCase();
+  if (/(医疗|诊断|处方|患者|法律|诉讼|投资|股票|交易|证券|财务|审计|合规|招聘|人事|信贷|保险|medical|diagnos|legal|investment|trading|audit|compliance|hiring)/i.test(normalized)) {
+    return "high";
+  }
+  if (/(创业|企业|公司|经营|供应链|采购|销售|营销|运营|数据|隐私|安全|startup|business|finance|privacy|security)/i.test(normalized)) {
+    return "medium";
+  }
+  return "low";
+}
+
+function inferComplexityLevel(goal, riskLevel) {
+  if (riskLevel === "high") return "L";
+  if (/(从零|创业|企业|公司|跨团队|平台|生态|组织|end-to-end|from scratch)/i.test(String(goal || ""))) return "L";
+  return "M";
+}
+
+function genericRiskControls(riskLevel) {
+  if (riskLevel === "high") {
+    return {
+      domainRiskLevel: "high",
+      requiredDisclaimers: [
+        "当前团队由通用草案生成，未经过对应领域专家认证，不得替代持牌或法定专业责任人。",
+        "任何影响健康、法律权利、资金、就业或合规的结论都必须由有资质的人类责任人复核。"
+      ],
+      blockedClaims: [
+        "不得输出确定性诊断、处方、法律结论、收益承诺、录用淘汰决定或其他不可逆专业指令。",
+        "未获得用户授权和人工批准前不得执行外部写操作、交易、签约、发布或敏感数据处理。"
+      ],
+      evidenceRules: [
+        "所有高风险结论必须记录来源、时效、适用范围、反向证据、置信度和失效条件。",
+        "缺少领域 pack、关键数据或人工责任人时必须停止在草案或待复核状态。"
+      ],
+      humanReview: {
+        required: true,
+        accountableRole: "quality-reviewer",
+        requiredWhen: [
+          "输出影响健康、法律权利、资金、就业、隐私或合规。",
+          "需要执行不可逆操作或使用敏感数据。"
+        ],
+        blockedWithoutApproval: true
+      }
+    };
+  }
+  return {
+    domainRiskLevel: riskLevel,
+    requiredDisclaimers: ["当前团队由通用草案生成，未命中内置 domain pack，必须在真实使用前补强领域方法论。"],
+    blockedClaims: ["不得声称通用草案已经覆盖完整垂直领域专业能力。"],
+    evidenceRules: ["所有完成结论必须附带验证命令、日志、文件路径、数据来源或人工确认。"],
+    humanReview: {
+      required: false,
+      accountableRole: "",
+      requiredWhen: [],
+      blockedWithoutApproval: false
+    }
+  };
+}
+
 function parameterDefaults(pack, baseSpec, goal) {
   const parameters = pack.parameters || {};
   const base = {
@@ -212,6 +270,7 @@ function synthesizeSpec(baseSpec, pack, args, argv) {
   const spec = clone(baseSpec);
   const params = resolveParameters(pack, baseSpec, args, argv);
   const oldPrefix = spec.commands.prefix;
+  const goal = args.goal || args._.join(" ");
 
   spec.skill.id = params.skillId;
   spec.skill.name = params.skillName;
@@ -222,6 +281,13 @@ function synthesizeSpec(baseSpec, pack, args, argv) {
   spec.skill.primaryValue = params.primaryValue;
   spec.commands.prefix = params.commandPrefix;
   spec.output.defaultDirectory = params.outputDirectory;
+  if (goal && spec.teamDesign) {
+    spec.teamDesign.problemStatement = goal;
+    spec.teamDesign.assumptions = [
+      `当前规格由领域包 ${pack.id} 根据用户目标合成，仍需在首次执行时复核目标、约束和成功标准。`,
+      ...(spec.teamDesign.assumptions || [])
+    ];
+  }
 
   for (const workflow of spec.workflows || []) {
     workflow.triggers = replacePrefix(workflow.triggers || [], oldPrefix, params.commandPrefix);
@@ -266,8 +332,15 @@ function synthesizeFallbackSpec(args, argv) {
   const goal = args.goal || args._.join(" ");
   const params = resolveFallbackParameters(args, argv);
   const prefix = params.commandPrefix;
+  const riskLevel = inferRiskLevel(goal);
+  const complexityLevel = inferComplexityLevel(goal, riskLevel);
+  const executionProfile = riskLevel === "high" || ["L", "XL"].includes(complexityLevel)
+    ? "assurance"
+    : "standard";
+  const riskControls = genericRiskControls(riskLevel);
 
   const spec = {
+    schemaVersion: "2.0.0",
     skill: {
       id: params.skillId,
       name: params.skillName,
@@ -276,6 +349,62 @@ function synthesizeFallbackSpec(args, argv) {
       domain: params.domain,
       targetUsers: params.targetUsers,
       primaryValue: params.primaryValue
+    },
+    teamDesign: {
+      problemStatement: goal,
+      mission: `围绕“${goal}”组建最小充分的专家协作团队，并把关键判断、执行、验证和复盘沉淀为可追踪流程。`,
+      targetOutcomes: [
+        "形成可执行的问题分解、责任边界和交付路径。",
+        "关键结论绑定证据、风险、置信度和失效条件。",
+        "通过代表性场景验证团队蓝图，并保留待领域化补强项。"
+      ],
+      stakeholders: [
+        ...params.targetUsers,
+        "最终决策和风险责任人"
+      ],
+      constraints: [
+        "核心生成与验证必须离线运行，不默认调用外部服务。",
+        "未命中领域包时不得伪造成熟专业知识。",
+        "未获得授权和必要证据时不得执行外部副作用。"
+      ],
+      nonGoals: [
+        "不替代持牌、法定或组织内最终责任人。",
+        "不承诺一次生成即可达到行业领先的实战结果。"
+      ],
+      assumptions: [
+        "用户会补充影响范围、成功标准和关键约束。",
+        "领域事实、数据和法规边界需要真实来源或专家复核。"
+      ],
+      valueMetrics: [
+        {
+          name: "代表性任务可交付率",
+          baseline: "待通过首个真实场景采集",
+          target: "核心场景均有产物、证据和风险闭环",
+          evidenceSource: "验收场景、命令结果和人工复核记录",
+          reviewCadence: "每次交付后复盘"
+        }
+      ]
+    },
+    governance: {
+      defaultComplexityLevel: complexityLevel,
+      defaultExecutionProfile: executionProfile,
+      targetVerificationLevel: riskLevel === "high" ? "V3" : "V2",
+      roleModes: ["active", "consulted", "not_applicable"],
+      reassessmentTriggers: [
+        "范围扩大、关键假设被证伪或验证失败。",
+        "出现跨领域依赖、敏感数据、权限、外部副作用或 P0/P1 风险。"
+      ],
+      requiredGates: [
+        "role-activation-gate",
+        "value-gate",
+        "decision-gate",
+        "handoff-gate",
+        "complexity-gate",
+        "evidence-gate",
+        "verification-gate",
+        "delivery-gate"
+      ],
+      humanReview: riskControls.humanReview
     },
     commands: {
       prefix,
@@ -324,7 +453,13 @@ function synthesizeFallbackSpec(args, argv) {
         workingLogic: ["先复述目标和受众。", "列出必须补充的信息。", "把模糊目标转成可执行任务链路。"],
         checklist: ["目标用户明确", "核心任务明确", "成功标准可验证"],
         escalation: ["目标冲突", "缺少关键输入", "风险边界不清晰"],
-        doNotDo: ["不得跳过澄清直接生成最终结论。"]
+        doNotDo: ["不得跳过澄清直接生成最终结论。"],
+        activation: {
+          activeWhen: ["用户目标、目标受众或成功标准尚不明确。"],
+          consultedWhen: ["已有目标契约，只需复核范围或非目标。"],
+          notApplicableWhen: ["输入已经包含完整且无冲突的目标契约。"],
+          reassessWhen: ["范围、优先级或成功标准发生变化。"]
+        }
       },
       {
         id: "domain-expert",
@@ -339,7 +474,55 @@ function synthesizeFallbackSpec(args, argv) {
         workingLogic: ["先列出判断框架。", "再绑定证据和限制条件。", "最后形成可复核方案。"],
         checklist: ["结论有证据", "假设已标注", "失败模式已列出"],
         escalation: ["关键证据缺失", "领域风险高于当前草案能力"],
-        doNotDo: ["不得把未验证假设写成事实。"]
+        doNotDo: ["不得把未验证假设写成事实。"],
+        activation: {
+          activeWhen: ["需要领域判断、方法论、数据解释或候选方案。"],
+          consultedWhen: ["只需复核一个有界专业问题。"],
+          notApplicableWhen: ["任务仅做状态汇总或交付格式整理。"],
+          reassessWhen: ["发现新的领域依赖、证据冲突或高风险信号。"]
+        }
+      },
+      {
+        id: "solution-builder",
+        name: "Solution Builder",
+        role: "solution",
+        when_to_load: ["需要把分析转成方案、原型、计划或可执行产物"],
+        primary_outputs: ["solution-plan", "execution-artifact"],
+        quality_gates: ["decision-gate", "evidence-gate"],
+        responsibilities: ["把目标和领域判断转成最小可交付方案。", "明确依赖、责任、回滚和验证路径。"],
+        inputs: ["目标契约", "领域分析", "约束和风险"],
+        outputs: ["方案", "执行计划", "回滚与验证说明"],
+        workingLogic: ["先确定最小可交付结果。", "再拆解依赖和责任。", "最后绑定验证与回滚。"],
+        checklist: ["方案对应目标结果", "依赖和非目标明确", "验证和回滚可执行"],
+        escalation: ["方案需要不可逆操作", "依赖或责任边界不清"],
+        doNotDo: ["不得在未确认约束时扩大方案范围。"],
+        activation: {
+          activeWhen: ["任务要求产出方案、原型、计划、内容或其他可执行成果。"],
+          consultedWhen: ["只需评估现有方案的可行性或成本。"],
+          notApplicableWhen: ["任务明确只做研究、审计或信息汇总。"],
+          reassessWhen: ["方案影响范围、依赖、成本或回滚难度扩大。"]
+        }
+      },
+      {
+        id: "adoption-lead",
+        name: "Adoption Lead",
+        role: "adoption",
+        when_to_load: ["成果需要被用户采用、推广、上线、培训或持续运营"],
+        primary_outputs: ["adoption-plan", "feedback-loop"],
+        quality_gates: ["value-gate", "delivery-gate"],
+        responsibilities: ["设计成果采用、触达、运营和反馈闭环。", "定义价值指标、观测周期和下一轮决策。"],
+        inputs: ["目标用户", "解决方案", "价值指标"],
+        outputs: ["采用计划", "指标观测", "反馈与复盘计划"],
+        workingLogic: ["识别采用者和阻力。", "定义触达与观测方式。", "把反馈转成下一轮决策。"],
+        checklist: ["采用者明确", "指标和数据来源明确", "复盘责任明确"],
+        escalation: ["无法观测价值", "上线或触达需要额外授权"],
+        doNotDo: ["不得用模糊的体验提升替代可验证价值。"],
+        activation: {
+          activeWhen: ["成果需要上线、推广、销售、培训、运营或组织采用。"],
+          consultedWhen: ["只需校准价值指标或采用风险。"],
+          notApplicableWhen: ["一次性内部分析且没有后续采用或运营。"],
+          reassessWhen: ["目标用户、渠道、发布节奏或收益指标变化。"]
+        }
       },
       {
         id: "quality-reviewer",
@@ -354,7 +537,13 @@ function synthesizeFallbackSpec(args, argv) {
         workingLogic: ["逐项检查门禁。", "标注缺失证据和风险。", "给出可执行修复建议。"],
         checklist: ["门禁已覆盖", "失败样例已处理", "风险已声明"],
         escalation: ["验收失败", "风险不可接受", "证据不足"],
-        doNotDo: ["不得放行缺少证据的完成结论。"]
+        doNotDo: ["不得放行缺少证据的完成结论。"],
+        activation: {
+          activeWhen: ["存在交付、风险、回归或高影响结论。"],
+          consultedWhen: ["只需检查证据充分性或有限风险。"],
+          notApplicableWhen: ["没有任何待验证行为或结论的初步构想。"],
+          reassessWhen: ["验证失败、出现 P0/P1 或高风险信号。"]
+        }
       },
       {
         id: "delivery-manager",
@@ -369,7 +558,13 @@ function synthesizeFallbackSpec(args, argv) {
         workingLogic: ["先汇总已完成产物。", "再列出证据和风险。", "最后给出下一步建议。"],
         checklist: ["产物清单完整", "验证证据明确", "下一步可执行"],
         escalation: ["用户需要裁决", "输出目录或注册方式不明确"],
-        doNotDo: ["不得把草案标记为已充分领域化。"]
+        doNotDo: ["不得把草案标记为已充分领域化。"],
+        activation: {
+          activeWhen: ["standard/assurance 任务、跨角色决策或最终交付。"],
+          consultedWhen: ["lightweight 任务只需复核状态和结论边界。"],
+          notApplicableWhen: ["不适用；单一负责人可兼任但必须记录交付责任。"],
+          reassessWhen: ["角色冲突、门禁失败或交付范围变化。"]
+        }
       }
     ],
     workflows: [
@@ -404,7 +599,7 @@ function synthesizeFallbackSpec(args, argv) {
         title: "目标分析",
         triggers: [`${prefix} analyze`, "需要形成领域方法或候选方案"],
         commands: [`${prefix} analyze`],
-        members: ["delivery-manager", "domain-expert", "quality-reviewer"],
+        members: ["delivery-manager", "domain-expert", "solution-builder", "adoption-lead", "quality-reviewer"],
         execution_mode: "hybrid",
         quality_gates: ["evidence-gate", "quality-gate", "delivery-gate"],
         outputs: ["analysis-report", "quality-review", "delivery-summary"],
@@ -422,6 +617,20 @@ function synthesizeFallbackSpec(args, argv) {
             actions: ["生成方法、证据、假设和候选方案。"],
             outputs: ["analysis-report"],
             gates: ["evidence-gate"]
+          },
+          {
+            name: "方案构建",
+            owner: "solution-builder",
+            actions: ["把分析转成最小可交付方案、依赖、验证和回滚。"],
+            outputs: ["solution-plan"],
+            gates: ["decision-gate"]
+          },
+          {
+            name: "采用与价值",
+            owner: "adoption-lead",
+            actions: ["定义采用路径、价值指标、反馈和复盘计划。"],
+            outputs: ["adoption-plan"],
+            gates: ["value-gate"]
           },
           {
             name: "质量复核",
@@ -522,7 +731,19 @@ function synthesizeFallbackSpec(args, argv) {
           }
         }
       ],
-      qualityGates: ["intake-gate", "evidence-gate", "quality-gate", "risk-gate", "delivery-gate"],
+      qualityGates: [
+        "intake-gate",
+        "role-activation-gate",
+        "value-gate",
+        "decision-gate",
+        "handoff-gate",
+        "complexity-gate",
+        "evidence-gate",
+        "verification-gate",
+        "quality-gate",
+        "risk-gate",
+        "delivery-gate"
+      ],
       rubrics: ["目标清晰度", "领域内容深度", "证据完整度", "风险控制", "交付可用性"]
     },
     templates: [
@@ -612,14 +833,30 @@ function synthesizeFallbackSpec(args, argv) {
         input: `用户要求：${goal}`,
         expectedOutputs: ["goal-brief.md", "delivery-summary.md"],
         mustPassGates: ["intake-gate", "delivery-gate"],
-        failureExamples: ["没有说明未命中内置 domain pack。", "没有列出目标用户或核心任务。"]
+        failureExamples: ["没有说明未命中内置 domain pack。", "没有列出目标用户或核心任务。"],
+        expectedWorkflow: "goal-intake",
+        expectedProfile: executionProfile,
+        minimumVerificationLevel: "V1",
+        expectedRolePlan: {
+          active: ["intake-analyst", "delivery-manager"],
+          consulted: [],
+          notApplicable: ["domain-expert", "solution-builder", "adoption-lead", "quality-reviewer"]
+        }
       },
       {
         id: "generic-delivery-review",
         input: "用户要求确认当前团队草案是否可以注册使用。",
         expectedOutputs: ["analysis-report.md", "quality-review.md", "delivery-summary.md"],
         mustPassGates: ["evidence-gate", "quality-gate", "risk-gate"],
-        failureExamples: ["把草案声明为成熟领域团队。", "缺少证据、风险或后续补强建议。"]
+        failureExamples: ["把草案声明为成熟领域团队。", "缺少证据、风险或后续补强建议。"],
+        expectedWorkflow: "delivery-review",
+        expectedProfile: executionProfile,
+        minimumVerificationLevel: riskLevel === "high" ? "V3" : "V2",
+        expectedRolePlan: {
+          active: ["delivery-manager", "quality-reviewer"],
+          consulted: [],
+          notApplicable: ["intake-analyst", "domain-expert", "solution-builder", "adoption-lead"]
+        }
       }
     ],
     dataContracts: [
@@ -649,12 +886,7 @@ function synthesizeFallbackSpec(args, argv) {
       includeExternalSkillInstaller: true,
       includeValidation: true
     },
-    riskControls: {
-      domainRiskLevel: "medium",
-      requiredDisclaimers: ["当前团队由通用草案生成，未命中内置 domain pack，必须在真实使用前补强领域方法论。"],
-      blockedClaims: ["不得声称通用草案已经覆盖完整垂直领域专业能力。"],
-      evidenceRules: ["所有完成结论必须附带验证命令、日志、文件路径或人工确认。"]
-    },
+    riskControls,
     output: {
       defaultDirectory: params.outputDirectory,
       overwritePolicy: "block"

@@ -4,7 +4,10 @@
 
 ## 顶层字段
 
+- `schemaVersion`：兼容式 v2 规格版本；新规格使用 `2.x.x`。
 - `skill`：新团队 Skill 的身份、领域、目标用户和核心价值。
+- `teamDesign`：问题、使命、目标结果、利益相关方、约束、非目标、假设和价值指标。
+- `governance`：复杂度、执行档位、目标验证等级、角色模式、重评信号、必需门禁和人工复核。
 - `commands`：Slash 指令前缀和子命令。
 - `members`：团队角色。
 - `workflows`：标准工作流。
@@ -26,6 +29,7 @@
 - `skill`：判断目标、受众和核心价值。
 - `commands`：判断入口覆盖和 intake/deliver 闭环。
 - `members`：判断角色架构和协调责任。
+- `teamDesign`、`governance` 和成员 `activation`：判断问题价值契约、按需组队和执行治理是否完整。
 - `workflows`：判断命令映射、阶段、产出和门禁。
 - `docs`、`templates`、`domainKnowledge`：判断方法论和交付模板是否有可执行内容。
 - `acceptanceScenarios`、`dataContracts`、`capabilityMatrix`：判断是否具备真实验收闭环。
@@ -55,12 +59,15 @@ strategy-review
 - `commands.items[].workflow` 必须引用已存在的 workflow id。
 - `workflows[].members[]` 必须引用已存在的 member id。
 - `workflows[].stages[].owner` 必须引用已存在的 member id，且必须出现在当前 workflow 的 `members` 中。
+- `workflows[].members[]` 是候选角色池；咨询或不适用角色不要求拥有静态阶段。
 - `workflows[].quality_gates[]` 必须出现在至少一个 stage 的 `gates` 中。
 - `externalSkills.skills[].roles[]` 必须引用已存在的 member id。
 - `externalSkills.roleMap[].skills[]` 必须引用已存在的 external skill id。
 - `externalSkills.adapters[].skill` 必须引用已存在的 external skill id。
 - `capabilityMatrix[].owner` 必须引用已存在的 member id。
 - `acceptanceScenarios[].mustPassGates[]` 必须引用 `docs.qualityGates` 中的门禁。
+- `acceptanceScenarios[].expectedWorkflow` 必须引用已存在 workflow；`expectedRolePlan` 中 active/consulted 角色必须属于该 workflow 候选池。
+- `governance.requiredGates[]` 必须引用 `docs.qualityGates` 中的门禁。
 
 ## Capability Adapter 字段
 
@@ -86,6 +93,19 @@ strategy-review
 
 不建议使用“待补齐”“执行时再补”等占位内容；生成物校验会阻断空 bullet 和明显占位文案。
 
+## v2 团队治理字段
+
+新规格应补齐：
+
+- `teamDesign.valueMetrics[]`：`name`、`baseline`、`target`、`evidenceSource`、`reviewCadence`。
+- `members[].activation`：`activeWhen`、`consultedWhen`、`notApplicableWhen`、`reassessWhen`。
+- `governance.defaultComplexityLevel`：`S/M/L/XL`。
+- `governance.defaultExecutionProfile`：`lightweight/standard/assurance`。
+- `governance.targetVerificationLevel`：`V0-V4`。
+- `acceptanceScenarios[]`：`expectedWorkflow`、`expectedProfile`、`minimumVerificationLevel`、`expectedRolePlan`。
+
+旧规格仍可生成，但缺少上述治理契约时不能获得 A 级蓝图成熟度。生成器验证自身结构与契约时为工厂 V2；新团队真实业务验证等级始终从 V0 开始。
+
 ## 高风险字段
 
 当 `riskControls.domainRiskLevel` 为 `high` 时，以下字段必须非空：
@@ -93,6 +113,10 @@ strategy-review
 - `requiredDisclaimers`
 - `blockedClaims`
 - `evidenceRules`
+- `humanReview.required` 为 `true`
+- `humanReview.accountableRole`
+- `humanReview.requiredWhen`
+- `humanReview.blockedWithoutApproval` 为 `true`
 
 投资类团队必须至少声明：
 

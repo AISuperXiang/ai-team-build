@@ -1,6 +1,6 @@
 # Team Scoring Rubric
 
-`ai-team-build` 在 Generate 和 Validate 之后必须进入 Score 阶段，对当前创作的团队 Skill 做确定性评分，并输出评估分析报告。
+`ai-team-build` 在 Generate 和 Validate 之后必须进入 Score 阶段，对当前创作的团队蓝图与契约做确定性评分，并输出评估分析报告。评分不代表真实业务效果认证。
 
 ## 评分总览
 
@@ -40,12 +40,18 @@
 
 A 级团队不能只靠目录、数量和引用完整性获得高分，必须同时具备：
 
+- `teamDesign` 完整覆盖问题、使命、目标结果、利益相关方、约束、假设和价值指标。
+- `governance` 完整覆盖复杂度、执行档位、目标验证等级、重评信号、必需门禁和人工责任。
+- 每个成员有 `active`、`consulted`、`not_applicable` 和重评条件。
 - `domainKnowledge` 完整覆盖概念、方法、证据清单和失败模式。
 - docs 与 templates 的每个章节都有具体执行规则，不得只有标题或空 bullet。
 - 至少 2 个 `acceptanceScenarios`，每个场景包含输入、期望产出、必过门禁和失败样例。
 - 至少 1 个 `dataContracts`，说明数据来源、时效、必需字段、缺失处理和允许用途。
 - `capabilityMatrix` 明确核心能力、负责人、输入输出、门禁和成熟度。
+- 每个验收场景声明预期 workflow、执行档位、最低验证等级和 rolePlan。
 - 如果声明 external skills，必须有 `externalSkills.adapters` 说明输入输出、授权、降级和验证命令。
+
+满足 A 级只会得到 `contract-validated` 蓝图认证。工厂验证为 V2，新生成团队真实业务验证上限仍为 V0，必须通过真实任务证据逐级提升。
 
 ## 阻断规则
 
@@ -54,9 +60,10 @@ A 级团队不能只靠目录、数量和引用完整性获得高分，必须同
 - 高风险团队缺少免责声明、禁止性承诺或证据规则。
 - 没有协调/交付角色。
 - 命令没有映射到 workflow。
-- workflow 声明的成员没有阶段 owner，或声明的质量门禁没有出现在阶段 gates 中。
+- workflow 没有任何有效阶段 owner，阶段 owner 不在候选成员中，或声明的质量门禁没有出现在阶段 gates 中。
 - 方法论或模板仍包含“待执行时补齐”、空 bullet、未声明等空壳内容。
 - A 级团队缺少验收场景、数据契约或能力矩阵。
 - 声明 external skills 但缺少 Capability Adapter。
 - acceptance runner 未通过。
+- 高风险团队缺少人工责任人、复核触发条件或无批准阻断。
 - 没有生成 `evaluation-report.md`。

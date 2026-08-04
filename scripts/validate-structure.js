@@ -14,6 +14,7 @@ const requiredDirs = [
   "domain-packs",
   "domain-packs/stock-trading",
   "domain-packs/product-rd",
+  "domain-packs/venture-building",
   "examples",
   "fixtures"
 ];
@@ -32,6 +33,7 @@ const requiredFiles = [
   "docs/risk-control-standard.md",
   "docs/team-scoring-rubric.md",
   "docs/generated-skill-quality-gates.md",
+  "docs/skill-evolution-methodology.md",
   "schemas/team-spec.schema.json",
   "schemas/generated-skill.schema.json",
   "schemas/domain-pack.schema.json",
@@ -41,6 +43,7 @@ const requiredFiles = [
   "scripts/generate-team-skill.js",
   "scripts/synthesize-team-spec.js",
   "scripts/run-acceptance-scenarios.js",
+  "scripts/audit-skills.js",
   "scripts/score-team-spec.js",
   "scripts/validate-structure.js",
   "scripts/validate-team-spec.js",
@@ -49,7 +52,9 @@ const requiredFiles = [
   "domain-packs/README.md",
   "domain-packs/stock-trading/domain-pack.json",
   "domain-packs/product-rd/domain-pack.json",
+  "domain-packs/venture-building/domain-pack.json",
   "examples/product-rd-team.team-spec.json",
+  "examples/venture-building-team.team-spec.json",
   "fixtures/stock-trading-team.team-spec.json"
 ];
 
@@ -66,6 +71,9 @@ const templateFiles = [
   "assets/templates/workflows-README.md.tpl",
   "assets/templates/route-table.md.tpl",
   "assets/templates/execution-protocol.md.tpl",
+  "assets/templates/team-operating-model.md.tpl",
+  "assets/templates/verification-methodology.md.tpl",
+  "assets/templates/role-activation-methodology.md.tpl",
   "assets/templates/quality-gates.md.tpl",
   "assets/templates/quality-rubrics.md.tpl",
   "assets/templates/handoff-contract.md.tpl",
@@ -184,6 +192,11 @@ if (existsFile("skill-runtime.json")) {
   record(runtime && runtime.entrypoints && runtime.entrypoints.skill === "SKILL.md", "skill-runtime.json entrypoint skill is SKILL.md");
   record(runtime && runtime.entrypoints && runtime.entrypoints.commands === "commands/team-build.md", "skill-runtime.json entrypoint commands is commands/team-build.md");
   record(runtime && packageJson && runtime.install && runtime.install.packageName === packageJson.name, "runtime packageName matches package.json");
+  record(runtime && packageJson && runtime.skill && runtime.skill.version === packageJson.version, "runtime skill version matches package.json");
+  record(runtime && runtime.schemaVersion === "1.1.0", "runtime schemaVersion is 1.1.0");
+  record(Boolean(runtime && runtime.agentHints && runtime.agentHints.executionPolicy), "runtime defines execution policy");
+  record(Boolean(runtime && runtime.agentHints && runtime.agentHints.roleActivationPolicy), "runtime defines role activation policy");
+  record(Boolean(runtime && runtime.agentHints && runtime.agentHints.verificationPolicy), "runtime defines verification boundary");
   const runtimeText = JSON.stringify(runtime);
   const localPathPlaceholder = ["/path", "to"].join("/");
   const platformCopyCommand = ["cp", "-R"].join(" ");
@@ -197,7 +210,17 @@ if (existsFile("skill-runtime.json")) {
   }
 }
 
-for (const file of ["schemas/team-spec.schema.json", "schemas/generated-skill.schema.json", "schemas/domain-pack.schema.json", "examples/product-rd-team.team-spec.json", "fixtures/stock-trading-team.team-spec.json", "domain-packs/stock-trading/domain-pack.json", "domain-packs/product-rd/domain-pack.json"]) {
+for (const file of [
+  "schemas/team-spec.schema.json",
+  "schemas/generated-skill.schema.json",
+  "schemas/domain-pack.schema.json",
+  "examples/product-rd-team.team-spec.json",
+  "examples/venture-building-team.team-spec.json",
+  "fixtures/stock-trading-team.team-spec.json",
+  "domain-packs/stock-trading/domain-pack.json",
+  "domain-packs/product-rd/domain-pack.json",
+  "domain-packs/venture-building/domain-pack.json"
+]) {
   if (existsFile(file)) {
     const parsed = parseJson(file);
     record(Boolean(parsed), `${file} parses as JSON`);

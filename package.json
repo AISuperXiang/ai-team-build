@@ -1,7 +1,7 @@
 {
   "name": "ai-team-build",
-  "version": "0.1.0",
-  "description": "AI team skill builder that generates complete agent-readable team skills from a team specification.",
+  "version": "0.4.0",
+  "description": "Universal AI team skill factory that turns described problems into governed, verifiable agent teams.",
   "repository": {
     "type": "git",
     "url": "https://github.com/AISuperXiang/ai-team-build.git"
@@ -28,6 +28,7 @@
     "generate": "node scripts/generate-team-skill.js",
     "spec": "node scripts/synthesize-team-spec.js",
     "score": "node scripts/score-team-spec.js",
+    "audit:skills": "node scripts/audit-skills.js",
     "validate": "node scripts/validate-structure.js",
     "validate:structure": "node scripts/validate-structure.js",
     "validate:spec": "node scripts/validate-team-spec.js",
@@ -36,8 +37,9 @@
     "acceptance": "node scripts/run-acceptance-scenarios.js",
     "test:score": "node scripts/score-team-spec.js fixtures/stock-trading-team.team-spec.json --format json",
     "test:fixture": "node scripts/generate-team-skill.js --spec fixtures/stock-trading-team.team-spec.json --output .tmp/stock-trading-team --overwrite && node scripts/validate-generated-skill.js .tmp/stock-trading-team && node .tmp/stock-trading-team/scripts/run-acceptance-scenarios.js .tmp/stock-trading-team",
+    "test:venture": "node scripts/validate-team-spec.js examples/venture-building-team.team-spec.json && node scripts/generate-team-skill.js --spec examples/venture-building-team.team-spec.json --output .tmp/venture-building-team --overwrite && node scripts/validate-generated-skill.js .tmp/venture-building-team && node .tmp/venture-building-team/scripts/run-acceptance-scenarios.js .tmp/venture-building-team",
     "test:regression": "node scripts/run-release-regression-tests.js",
-    "test": "npm run validate:structure && npm run validate:domain-packs && npm run validate:spec -- fixtures/stock-trading-team.team-spec.json && npm run test:score && npm run test:fixture && npm run test:regression"
+    "test": "npm run validate:structure && npm run validate:domain-packs && npm run validate:spec -- fixtures/stock-trading-team.team-spec.json && npm run test:score && npm run test:fixture && npm run test:venture && npm run test:regression"
   },
   "license": "MIT"
 }

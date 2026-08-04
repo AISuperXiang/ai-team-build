@@ -182,9 +182,18 @@ function main() {
     "docs/quality-gates.md",
     "docs/quality-rubrics.md",
     "docs/handoff-contract.md",
+    "docs/team-operating-model.md",
+    "docs/execution-methodology.md",
+    "docs/verification-methodology.md",
+    "docs/role-activation-methodology.md",
     "docs/capability-matrix.md",
     "docs/acceptance-scenarios.md",
     "docs/integrations/data-contracts.md",
+    "assets/templates/decision-log.md",
+    "assets/templates/risk-register.md",
+    "assets/templates/role-handoff.md",
+    "assets/templates/evidence-index.md",
+    "assets/templates/delivery-summary.md",
     "external-cli/README.md",
     "external-skills/README.md",
     "external-skills/catalog.json",
@@ -229,6 +238,9 @@ function main() {
     record(runtime.skill && runtime.skill.id === packageJson.name, "runtime skill id matches package name");
     record(runtime.install && runtime.install.packageName === packageJson.name, "runtime packageName matches package name");
     record(runtime.skill && runtime.skill.entry === "SKILL.md", "runtime entry is SKILL.md");
+    record(Boolean(runtime.agentHints && runtime.agentHints.executionPolicy), "runtime defines execution policy");
+    record(Boolean(runtime.agentHints && runtime.agentHints.roleActivationPolicy), "runtime defines role activation policy");
+    record(Boolean(runtime.agentHints && runtime.agentHints.verificationPolicy), "runtime defines verification boundary");
     const runtimeText = JSON.stringify(runtime);
     const localPathPlaceholder = ["/path", "to"].join("/");
     const platformCopyCommand = ["cp", "-R"].join(" ");
@@ -247,6 +259,8 @@ function main() {
     record(typeof (report.evaluation && report.evaluation.totalScore) === "number", "evaluation has numeric totalScore");
     record(Boolean(report.evaluation && report.evaluation.grade), "evaluation has grade");
     record(report.evaluation && report.evaluation.reportPath === "evaluation-report.md", "evaluation reportPath is evaluation-report.md");
+    record(report.verification && report.verification.factoryVerificationLevel === "V2", "generation report records factory verification level");
+    record(report.verification && report.verification.generatedTeamVerificationLevel === "V0", "generation report keeps generated team at V0");
     if (report.evaluation && report.evaluation.grade === "A") {
       record(report.counts && report.counts.acceptanceScenarios > 0, "A-grade generated skill has acceptance scenarios");
       record(report.counts && report.counts.dataContracts > 0, "A-grade generated skill has data contracts");
@@ -263,6 +277,30 @@ function main() {
     record(evaluationReport.includes("## 维度评分"), "evaluation-report.md has dimension scoring");
     record(evaluationReport.includes("## 可提升项"), "evaluation-report.md has upgrade opportunities");
     record(evaluationReport.includes("## 能力升级建议"), "evaluation-report.md has capability recommendations");
+  }
+
+  if (existsFile(root, "docs/role-activation-methodology.md")) {
+    const roleMethodology = read(root, "docs/role-activation-methodology.md");
+    record(roleMethodology.includes("rolePlan"), "role activation methodology defines rolePlan");
+    record(
+      ["active", "consulted", "not_applicable"].every((mode) => roleMethodology.includes(mode)),
+      "role activation methodology defines all participation modes"
+    );
+    record(roleMethodology.includes("N/A") && /重新评估|re-?evaluate/i.test(roleMethodology), "role activation methodology covers N/A and reassessment");
+  }
+  if (existsFile(root, "docs/execution-methodology.md")) {
+    const executionMethodology = read(root, "docs/execution-methodology.md");
+    record(
+      ["lightweight", "standard", "assurance"].every((profile) => executionMethodology.includes(profile)),
+      "execution methodology defines all execution profiles"
+    );
+  }
+  if (existsFile(root, "docs/verification-methodology.md")) {
+    const verificationMethodology = read(root, "docs/verification-methodology.md");
+    record(
+      ["V0", "V1", "V2", "V3", "V4"].every((level) => verificationMethodology.includes(level)),
+      "verification methodology defines V0-V4"
+    );
   }
 
   const memberFiles = listMarkdownFiles(root, "members").filter((file) => !file.endsWith("README.md"));
@@ -303,9 +341,6 @@ function main() {
     for (const owner of stageOwners) {
       record(memberIds.has(owner), `${workflowFile} stage owner references existing member: ${owner}`);
       record(((hasValidFrontmatter(data) && data.members) || []).includes(owner), `${workflowFile} stage owner is declared in workflow members: ${owner}`);
-    }
-    for (const member of (hasValidFrontmatter(data) && data.members) || []) {
-      record(stageOwners.has(member), `${workflowFile} declared member owns a stage: ${member}`);
     }
     for (const gate of (hasValidFrontmatter(data) && data.quality_gates) || []) {
       record(stageGates.has(gate), `${workflowFile} declared quality gate appears in stage rows: ${gate}`);
@@ -358,6 +393,45 @@ function main() {
   ]) {
     const schema = existsFile(root, schemaFile) ? parseJson(root, schemaFile) : null;
     record(schemaIsDeep(schema), `${schemaFile} has required fields and properties`);
+    if (schemaFile === "schemas/status.schema.json") {
+      const rolePlan = schema && schema.properties && schema.properties.rolePlan;
+      record(Array.isArray(schema && schema.required) && schema.required.includes("rolePlan"), "status schema requires rolePlan");
+      record(
+        Boolean(rolePlan && rolePlan.items && rolePlan.items.properties && rolePlan.items.properties.mode),
+        "status schema defines rolePlan mode"
+      );
+      record(
+        Array.isArray(schema && schema.required) && schema.required.includes("executionProfile"),
+        "status schema requires executionProfile"
+      );
+      record(
+        Array.isArray(schema && schema.required) && schema.required.includes("verificationLevel"),
+        "status schema requires verificationLevel"
+      );
+    }
+    if (schemaFile === "schemas/skill-runtime.schema.json") {
+      const agentHints = schema && schema.properties && schema.properties.agentHints;
+      record(
+        Array.isArray(schema && schema.required) && schema.required.includes("agentHints"),
+        "runtime schema requires agentHints"
+      );
+      record(
+        Boolean(agentHints && agentHints.properties && agentHints.properties.verificationPolicy),
+        "runtime schema defines verificationPolicy"
+      );
+    }
+  }
+
+  if (existsFile(root, "assets/templates/workflow-status.json")) {
+    const status = parseJson(root, "assets/templates/workflow-status.json");
+    record(
+      ["lightweight", "standard", "assurance"].includes(status && status.executionProfile),
+      "workflow status has valid executionProfile"
+    );
+    record(/^V[0-4]$/.test(String(status && status.verificationLevel)), "workflow status has valid verificationLevel");
+    record(/^V[0-4]$/.test(String(status && status.targetVerificationLevel)), "workflow status has targetVerificationLevel");
+    record(Array.isArray(status && status.blockers), "workflow status has blockers array");
+    record(Array.isArray(status && status.uncoveredRisks), "workflow status has uncoveredRisks array");
   }
 
   if (existsFile(root, "external-skills/adapters.json")) {

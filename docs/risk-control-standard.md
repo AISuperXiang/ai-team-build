@@ -15,6 +15,10 @@
 - `requiredDisclaimers`：必须展示给用户的免责声明。
 - `blockedClaims`：禁止输出的承诺或行为。
 - `evidenceRules`：所有结论需要满足的证据要求。
+- `humanReview.required`：必须为 `true`。
+- `humanReview.accountableRole`：引用团队中真实存在的人工责任角色。
+- `humanReview.requiredWhen`：列出触发复核的决策、结论和外部副作用。
+- `humanReview.blockedWithoutApproval`：必须为 `true`，批准前阻断交付或不可逆操作。
 
 ## 投资类团队要求
 
@@ -35,5 +39,7 @@
 - `docs/quality-gates.md`
 - `docs/quality-rubrics.md`
 - `generation-report.json`
+- `assets/templates/risk-register.md`
+- `assets/templates/decision-log.md`
 
 `scripts/validate-generated-skill.js` 会检查高风险声明是否写入生成物。

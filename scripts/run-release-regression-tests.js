@@ -113,6 +113,12 @@ function testQuotedFrontmatterGeneration() {
   assert(!skillMd.includes("description: \"A \"quoted\""), "generated SKILL.md escapes quoted frontmatter");
   const validate = runNode(["scripts/validate-generated-skill.js", outputDir]);
   assert(validate.status === 0, "generated validator accepts escaped frontmatter", validate.stdout + validate.stderr);
+  const generatedContracts = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
+  assert(
+    generatedContracts.status === 0,
+    "generated contract validator parses quoted frontmatter arrays",
+    generatedContracts.stdout + generatedContracts.stderr
+  );
 }
 
 function testUnmatchedDomainPackFallsBackToDraft() {
@@ -122,9 +128,17 @@ function testUnmatchedDomainPackFallsBackToDraft() {
   assert(synthesize.status === 0, "synthesize falls back when no domain pack matches", synthesize.stdout + synthesize.stderr);
   const validate = runNode(["scripts/validate-team-spec.js", specPath]);
   assert(validate.status === 0, "fallback spec passes validate-team-spec", validate.stdout + validate.stderr);
-  const score = scoreSpec(JSON.parse(fs.readFileSync(specPath, "utf8")));
+  const spec = JSON.parse(fs.readFileSync(specPath, "utf8"));
+  const score = scoreSpec(spec);
   assert(score.grade !== "A", "fallback generic draft is blocked from A grade");
   assert(score.gradeBlockers.some((item) => item.includes("generic-draft")), "fallback A-grade blocker is reported");
+  const outputDir = path.join(dir, spec.skill.id);
+  const generate = runNode(["scripts/generate-team-skill.js", "--spec", specPath, "--output", outputDir, "--overwrite"]);
+  assert(generate.status === 0, "fallback generic draft generates successfully", generate.stdout + generate.stderr);
+  const validateGenerated = runNode(["scripts/validate-generated-skill.js", outputDir]);
+  assert(validateGenerated.status === 0, "fallback generated team passes generated-skill validation", validateGenerated.stdout + validateGenerated.stderr);
+  const acceptance = runNode([path.join(outputDir, "scripts", "run-acceptance-scenarios.js"), outputDir]);
+  assert(acceptance.status === 0, "fallback generated team passes acceptance contracts", acceptance.stdout + acceptance.stderr);
 }
 
 function testUnsafeOutputDirectoryRejected() {
@@ -146,7 +160,168 @@ function testExternalSkillAdaptersBlockAGrade() {
   spec.externalSkills.adapters = [];
   const score = scoreSpec(spec);
   assert(score.grade !== "A", "missing adapters blocks A grade");
-  assert(score.gradeBlockers.some((item) => item.includes("externalSkills.adapters")), "missing adapters appears in grade blockers");
+  assert(score.gradeBlockers.some((item) => /adapter/i.test(item)), "missing adapters appears in grade blockers");
+}
+
+function testInvalidSpecCannotScoreA() {
+  const spec = readFixtureSpec();
+  spec.output.defaultDirectory = "/";
+  const score = scoreSpec(spec);
+  assert(score.grade === "D", "invalid output path forces D grade");
+  assert(score.certificationLevel === "invalid", "invalid spec has invalid certification");
+}
+
+function testHighRiskWithoutHumanReviewIsRejected() {
+  const spec = readFixtureSpec();
+  delete spec.riskControls.humanReview;
+  const reporter = validateSpec(spec);
+  assert(reporter.failedCount() > 0, "high-risk spec without human review is rejected");
+  const score = scoreSpec(spec);
+  assert(score.grade === "D", "high-risk spec without human review cannot be rated");
+}
+
+function testCandidateMemberMayNotOwnStaticStage() {
+  const spec = readFixtureSpec();
+  spec.workflows[0].members.push("market-researcher");
+  const reporter = validateSpec(spec);
+  assert(reporter.failedCount() === 0, "candidate member may be consulted or not_applicable without owning a static stage");
+}
+
+function testVenturePackMatchesEntrepreneurGoal() {
+  const dir = tmpDir("venture-pack");
+  const specPath = path.join(dir, "venture-spec.json");
+  const synthesize = runNode([
+    "scripts/synthesize-team-spec.js",
+    "--goal",
+    "我是一个从零开始的企业家，需要搭建创业团队验证客户、产品、GTM 和现金流",
+    "--output",
+    specPath
+  ]);
+  assert(synthesize.status === 0, "entrepreneur goal synthesizes successfully", synthesize.stdout + synthesize.stderr);
+  const spec = JSON.parse(fs.readFileSync(specPath, "utf8"));
+  assert(spec.skill.id === "venture-building-team", "entrepreneur goal selects venture-building domain pack");
+  assert(
+    ["customer-research-lead", "solution-lead", "go-to-market-lead", "finance-risk-lead"]
+      .every((role) => spec.members.some((member) => member.id === role)),
+    "venture team covers customer, solution, GTM, and finance-risk capabilities"
+  );
+  const score = scoreSpec(spec);
+  assert(score.grade === "A" && score.certificationLevel === "contract-validated", "venture blueprint is contract-validated A grade");
+}
+
+function testUnknownMedicalGoalUsesAssuranceAndHumanReview() {
+  const dir = tmpDir("medical-fallback");
+  const specPath = path.join(dir, "medical-spec.json");
+  const synthesize = runNode([
+    "scripts/synthesize-team-spec.js",
+    "--goal",
+    "创建一个罕见病诊断和处方辅助团队",
+    "--output",
+    specPath
+  ]);
+  assert(synthesize.status === 0, "unknown medical goal synthesizes a guarded draft", synthesize.stdout + synthesize.stderr);
+  const spec = JSON.parse(fs.readFileSync(specPath, "utf8"));
+  assert(spec.riskControls.domainRiskLevel === "high", "medical fallback is classified high risk");
+  assert(spec.governance.defaultExecutionProfile === "assurance", "medical fallback uses assurance profile");
+  assert(spec.riskControls.humanReview.required === true, "medical fallback requires human review");
+  assert(spec.riskControls.humanReview.blockedWithoutApproval === true, "medical fallback blocks without approval");
+  assert(scoreSpec(spec).grade !== "A", "generic medical draft cannot receive A grade");
+}
+
+function testGeneratedStatusCarriesExecutionContract() {
+  const dir = tmpDir("execution-contract");
+  const spec = readFixtureSpec();
+  const specPath = path.join(dir, "spec.json");
+  const outputDir = path.join(dir, spec.skill.id);
+  writeJson(specPath, spec);
+  const generate = runNode(["scripts/generate-team-skill.js", "--spec", specPath, "--output", outputDir, "--overwrite"]);
+  assert(generate.status === 0, "generator writes execution contract", generate.stdout + generate.stderr);
+  const status = JSON.parse(fs.readFileSync(path.join(outputDir, "assets", "templates", "workflow-status.json"), "utf8"));
+  assert(["lightweight", "standard", "assurance"].includes(status.executionProfile), "status has executionProfile");
+  assert(status.verificationLevel === "V0", "new generated team starts at V0");
+  assert(/^V[0-4]$/.test(status.targetVerificationLevel), "status has targetVerificationLevel");
+  assert(Array.isArray(status.blockers) && Array.isArray(status.uncoveredRisks), "status tracks blockers and uncovered risks");
+  for (const file of [
+    "decision-log.md",
+    "risk-register.md",
+    "role-handoff.md",
+    "evidence-index.md",
+    "delivery-summary.md"
+  ]) {
+    assert(fs.existsSync(path.join(outputDir, "assets", "templates", file)), `generated team includes governance template: ${file}`);
+  }
+  const riskRegister = fs.readFileSync(path.join(outputDir, "assets", "templates", "risk-register.md"), "utf8");
+  assert(riskRegister.includes("# 风险台账"), "domain template overrides the generic governance fallback");
+  const runtime = JSON.parse(fs.readFileSync(path.join(outputDir, "skill-runtime.json"), "utf8"));
+  assert(Boolean(runtime.agentHints.verificationPolicy), "generated runtime records verification boundary");
+  const report = JSON.parse(fs.readFileSync(path.join(outputDir, "generation-report.json"), "utf8"));
+  assert(report.verification.factoryVerificationLevel === "V2", "generation report records factory V2");
+  assert(report.verification.generatedTeamVerificationLevel === "V0", "generation report preserves team V0");
+}
+
+function testSkillAuditIsStaticAndSupportsBatchRoots() {
+  const dir = tmpDir("skill-audit");
+  const markerPath = path.join(dir, "target-script-ran");
+  const weakSkill = path.join(dir, "weak-skill");
+  const secondSkill = path.join(dir, "second-skill");
+  writeText(
+    path.join(weakSkill, "SKILL.md"),
+    `---\nname: weak-skill\ndescription: "Use when a user asks for a weak skill."\n---\n\n# Weak Skill\n\nRun the task.\n`
+  );
+  writeJson(path.join(weakSkill, "package.json"), {
+    scripts: {
+      test: `node -e "require('fs').writeFileSync('${markerPath}', 'ran')"`
+    }
+  });
+  writeText(
+    path.join(secondSkill, "SKILL.md"),
+    `---\nname: second-skill\ndescription: "Use when a user asks for a second weak skill."\n---\n\n# Second Skill\n\nRun the task.\n`
+  );
+
+  const single = runNode(["scripts/audit-skills.js", weakSkill, "--format", "json"]);
+  assert(single.status === 0, "skill audit accepts a standalone Skill path", single.stdout + single.stderr);
+  const singleReport = JSON.parse(single.stdout);
+  assert(singleReport.auditMode === "static-only", "skill audit reports static-only mode");
+  assert(singleReport.totalScore < 70, "skill audit identifies a weak Skill baseline");
+  assert(singleReport.findings.some((finding) => finding.priority === "P1"), "skill audit reports actionable P1 findings");
+  assert(!fs.existsSync(markerPath), "skill audit does not execute target package scripts");
+
+  const batch = runNode(["scripts/audit-skills.js", "--root", dir, "--format", "json"]);
+  assert(batch.status === 0, "skill audit supports batch root scanning", batch.stdout + batch.stderr);
+  const batchReport = JSON.parse(batch.stdout);
+  assert(batchReport.reports.length === 2, "skill audit reports every Skill found below a batch root");
+}
+
+function testSkillAuditChecksTeamRoleActivation() {
+  const dir = tmpDir("team-role-activation");
+  const teamSkill = path.join(dir, "team-skill");
+  writeText(
+    path.join(teamSkill, "SKILL.md"),
+    `---\nname: team-skill\ndescription: "Use when a user asks for a team workflow."\n---\n\n# Team Skill\n\n## 触发边界\n\nUse when a team workflow is needed.\n\n## 不适用\n\nNot for a single-file task.\n\n## 执行循环\n\nRoute, Load, Execute, Validate.\n`
+  );
+  writeText(path.join(teamSkill, "members", "analyst.md"), "# Analyst\n");
+
+  const incomplete = runNode(["scripts/audit-skills.js", teamSkill, "--format", "json"]);
+  assert(incomplete.status === 0, "skill audit accepts a team Skill without rolePlan", incomplete.stdout + incomplete.stderr);
+  const incompleteReport = JSON.parse(incomplete.stdout);
+  const incompleteExecution = incompleteReport.dimensions.find((item) => item.id === "execution-orchestration");
+  assert(
+    incompleteExecution.gaps.some((gap) => gap.includes("rolePlan")),
+    "skill audit identifies missing team role activation contract"
+  );
+
+  writeText(
+    path.join(teamSkill, "docs", "role-activation-methodology.md"),
+    "# Role Activation\n\nrolePlan records role, active, consulted, not_applicable, reason, and stages. not_applicable roles use N/A scoring. Reassess rolePlan when scope changes.\n"
+  );
+  const complete = runNode(["scripts/audit-skills.js", teamSkill, "--format", "json"]);
+  assert(complete.status === 0, "skill audit accepts team role activation contract", complete.stdout + complete.stderr);
+  const completeReport = JSON.parse(complete.stdout);
+  const completeExecution = completeReport.dimensions.find((item) => item.id === "execution-orchestration");
+  assert(
+    !completeExecution.gaps.some((gap) => gap.includes("rolePlan")),
+    "skill audit clears role activation finding when the contract is present"
+  );
 }
 
 function main() {
@@ -157,6 +332,14 @@ function main() {
   testQuotedFrontmatterGeneration();
   testUnmatchedDomainPackFallsBackToDraft();
   testExternalSkillAdaptersBlockAGrade();
+  testInvalidSpecCannotScoreA();
+  testHighRiskWithoutHumanReviewIsRejected();
+  testCandidateMemberMayNotOwnStaticStage();
+  testVenturePackMatchesEntrepreneurGoal();
+  testUnknownMedicalGoalUsesAssuranceAndHumanReview();
+  testGeneratedStatusCarriesExecutionContract();
+  testSkillAuditIsStaticAndSupportsBatchRoots();
+  testSkillAuditChecksTeamRoleActivation();
   console.log("\nAll release regression checks passed.");
 }
 

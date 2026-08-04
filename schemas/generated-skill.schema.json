@@ -144,7 +144,10 @@
     "agentHints": {
       "type": "object",
       "required": [
-        "readOrder"
+        "readOrder",
+        "executionPolicy",
+        "roleActivationPolicy",
+        "verificationPolicy"
       ],
       "properties": {
         "readOrder": {
@@ -157,6 +160,15 @@
           "type": "string"
         },
         "generationPolicy": {
+          "type": "string"
+        },
+        "executionPolicy": {
+          "type": "string"
+        },
+        "roleActivationPolicy": {
+          "type": "string"
+        },
+        "verificationPolicy": {
           "type": "string"
         },
         "externalSkillPolicy": {

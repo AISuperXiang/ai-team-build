@@ -1,0 +1,1547 @@
+{
+  "schemaVersion": "2.0.0",
+  "skill": {
+    "id": "venture-building-team",
+    "name": "Venture Building Team Skill",
+    "description": "Customer discovery, offer design, go-to-market, runway, operations, and founder decision workflow skill.",
+    "version": "0.1.0",
+    "domain": "从零创业与企业构建",
+    "targetUsers": [
+      "需要从问题机会开始搭建业务的创业者",
+      "需要用小团队验证市场、方案和增长路径的业务负责人"
+    ],
+    "primaryValue": "把创业想法推进为有客户证据、有最小方案、有获客路径、有现金流边界和阶段复盘的可执行企业构建计划。"
+  },
+  "teamDesign": {
+    "problemStatement": "从零创业者通常同时缺少客户证据、清晰定位、可销售方案、获客路径、现金流纪律和交付节奏。",
+    "mission": "在 90 天内用最小充分团队验证真实问题、形成可销售方案、建立首个 GTM 闭环，并控制现金流与不可逆风险。",
+    "targetOutcomes": [
+      "形成有证据的问题定义、目标客户和价值主张。",
+      "完成最小可销售方案与定价假设。",
+      "建立首批获客、转化、交付和复购实验。",
+      "形成 runway、合规、关键决策和 30/60/90 天复盘机制。"
+    ],
+    "stakeholders": [
+      "创始人和联合创始人",
+      "目标客户与早期采用者",
+      "资金、法务和交付责任人"
+    ],
+    "constraints": [
+      "优先验证高风险假设，不用大规模投入替代客户证据。",
+      "资金、合同、招聘、隐私和监管事项由人类责任人最终批准。",
+      "未获授权前不执行付款、签约、招聘或外部发布。"
+    ],
+    "nonGoals": [
+      "不承诺 90 天内融资、盈利或实现产品市场匹配。",
+      "不一次性搭建完整公司编制。",
+      "不替代律师、会计师、投资顾问或雇佣责任人。"
+    ],
+    "assumptions": [
+      "创始人能够接触潜在客户并记录访谈证据。",
+      "首轮目标是学习速度和可重复证据，不是虚荣指标。",
+      "团队会按角色激活计划只投入当前里程碑需要的能力。"
+    ],
+    "valueMetrics": [
+      {
+        "name": "问题证据强度",
+        "baseline": "待完成首轮客户访谈",
+        "target": "至少 10 个目标客户样本，重复痛点和付费信号可追踪",
+        "evidenceSource": "客户访谈记录、行为数据、预付或意向证据",
+        "reviewCadence": "每周"
+      },
+      {
+        "name": "验证学习周期",
+        "baseline": "待采集",
+        "target": "每两周至少关闭一个最高风险假设",
+        "evidenceSource": "hypothesis log、experiment report、decision log",
+        "reviewCadence": "双周"
+      },
+      {
+        "name": "现金 runway",
+        "baseline": "由创始人提供真实预算",
+        "target": "关键实验不突破经批准的现金与时间上限",
+        "evidenceSource": "预算、现金流和支出审批记录",
+        "reviewCadence": "每月"
+      }
+    ]
+  },
+  "governance": {
+    "defaultComplexityLevel": "L",
+    "defaultExecutionProfile": "assurance",
+    "targetVerificationLevel": "V3",
+    "roleModes": [
+      "active",
+      "consulted",
+      "not_applicable"
+    ],
+    "reassessmentTriggers": [
+      "目标客户、问题、方案、定价或渠道假设被证伪。",
+      "出现资金、合同、招聘、隐私、监管或不可逆承诺。",
+      "验证失败、runway 下降或里程碑范围扩大。"
+    ],
+    "requiredGates": [
+      "role-activation-gate",
+      "value-gate",
+      "decision-gate",
+      "handoff-gate",
+      "complexity-gate",
+      "evidence-gate",
+      "verification-gate",
+      "runway-gate",
+      "delivery-gate"
+    ],
+    "humanReview": {
+      "required": true,
+      "accountableRole": "founder-strategist",
+      "requiredWhen": [
+        "涉及资金、合同、招聘、股权、隐私或对外承诺。",
+        "需要改变目标客户、核心定位或预算上限。"
+      ],
+      "blockedWithoutApproval": true
+    }
+  },
+  "commands": {
+    "prefix": "/venture-team",
+    "items": [
+      {
+        "name": "intake",
+        "workflow": "venture-intake",
+        "description": "明确创业目标、约束、runway、关键假设和 90 天结果。",
+        "requiredInput": "创业想法、资源、时限和成功标准",
+        "defaultOutput": "venture brief、假设清单和里程碑"
+      },
+      {
+        "name": "discover",
+        "workflow": "customer-validation",
+        "description": "设计并复核客户发现、问题验证和付费信号。",
+        "requiredInput": "目标客户假设和问题假设",
+        "defaultOutput": "客户证据、问题排序和决策建议"
+      },
+      {
+        "name": "offer",
+        "workflow": "offer-validation",
+        "description": "形成最小可销售方案、定价和交付实验。",
+        "requiredInput": "客户证据和价值假设",
+        "defaultOutput": "offer、实验计划和交付约束"
+      },
+      {
+        "name": "gtm",
+        "workflow": "go-to-market-validation",
+        "description": "设计渠道、信息、销售和转化实验。",
+        "requiredInput": "目标客户、offer 和预算",
+        "defaultOutput": "GTM 实验、指标和停止条件"
+      },
+      {
+        "name": "operate",
+        "workflow": "operating-review",
+        "description": "复核现金流、交付能力、风险和 30/60/90 天计划。",
+        "requiredInput": "实验结果、预算、交付与风险数据",
+        "defaultOutput": "经营复盘和下一阶段资源计划"
+      },
+      {
+        "name": "deliver",
+        "workflow": "venture-delivery",
+        "description": "汇总证据、决策、风险、runway 和下一轮计划。",
+        "requiredInput": "当前里程碑产物和验证记录",
+        "defaultOutput": "venture delivery summary"
+      }
+    ]
+  },
+  "members": [
+    {
+      "id": "founder-strategist",
+      "name": "创始人战略负责人",
+      "role": "strategy",
+      "when_to_load": [
+        "使命、定位、优先级、关键取舍和最终责任"
+      ],
+      "primary_outputs": [
+        "venture-brief",
+        "decision-log",
+        "milestone-plan"
+      ],
+      "quality_gates": [
+        "value-gate",
+        "decision-gate"
+      ],
+      "responsibilities": [
+        "明确使命、目标客户、90 天结果和资源边界。",
+        "基于证据裁决定位、预算、里程碑和停止条件。"
+      ],
+      "inputs": [
+        "创业目标",
+        "资源和 runway",
+        "各角色证据与风险"
+      ],
+      "outputs": [
+        "创业目标契约",
+        "关键决策",
+        "里程碑和责任边界"
+      ],
+      "workingLogic": [
+        "先明确问题和不可妥协约束。",
+        "再按风险和学习价值排序假设。",
+        "最后做有证据的资源与停止决策。"
+      ],
+      "checklist": [
+        "目标客户和结果明确",
+        "资源上限和非目标明确",
+        "关键决策有证据与复盘日期"
+      ],
+      "escalation": [
+        "目标互相冲突",
+        "预算或法律责任超出授权"
+      ],
+      "doNotDo": [
+        "不把愿景当作客户证据。",
+        "不在证据不足时做不可逆投入。"
+      ],
+      "activation": {
+        "activeWhen": [
+          "涉及使命、定位、优先级、资金或跨角色裁决。"
+        ],
+        "consultedWhen": [
+          "单一实验只需确认目标和决策边界。"
+        ],
+        "notApplicableWhen": [
+          "不适用；可委托阶段执行，但最终责任不能移除。"
+        ],
+        "reassessWhen": [
+          "核心假设、预算、目标客户或外部风险变化。"
+        ]
+      },
+      "externalSkills": []
+    },
+    {
+      "id": "customer-research-lead",
+      "name": "客户研究负责人",
+      "role": "customer-research",
+      "when_to_load": [
+        "客户发现、问题验证、需求证据和细分市场"
+      ],
+      "primary_outputs": [
+        "customer-evidence",
+        "problem-ranking"
+      ],
+      "quality_gates": [
+        "customer-evidence-gate",
+        "evidence-gate"
+      ],
+      "responsibilities": [
+        "设计不诱导的客户访谈和行为验证。",
+        "区分意见、行为、付费信号和真实约束。"
+      ],
+      "inputs": [
+        "客户假设",
+        "访谈与行为数据",
+        "市场材料"
+      ],
+      "outputs": [
+        "客户证据库",
+        "问题排序",
+        "反向证据"
+      ],
+      "workingLogic": [
+        "先定义需要证伪的假设。",
+        "再收集行为和约束证据。",
+        "最后按频率、强度和付费信号排序。"
+      ],
+      "checklist": [
+        "样本和来源明确",
+        "事实与解释分开",
+        "包含反向证据"
+      ],
+      "escalation": [
+        "样本偏差严重",
+        "无法接触目标客户"
+      ],
+      "doNotDo": [
+        "不把礼貌性反馈当作购买意愿。",
+        "不选择性忽略否定证据。"
+      ],
+      "activation": {
+        "activeWhen": [
+          "问题、目标客户或付费意愿尚未有足够证据。"
+        ],
+        "consultedWhen": [
+          "方案或 GTM 只需复核客户证据。"
+        ],
+        "notApplicableWhen": [
+          "任务只做已验证业务的内部经营复盘。"
+        ],
+        "reassessWhen": [
+          "客户细分、问题假设或证据质量变化。"
+        ]
+      },
+      "externalSkills": []
+    },
+    {
+      "id": "solution-lead",
+      "name": "方案与产品负责人",
+      "role": "solution",
+      "when_to_load": [
+        "价值主张、最小方案、定价和交付实验"
+      ],
+      "primary_outputs": [
+        "offer-plan",
+        "solution-experiment"
+      ],
+      "quality_gates": [
+        "offer-gate",
+        "evidence-gate"
+      ],
+      "responsibilities": [
+        "把客户问题转成最小可销售方案和交付承诺。",
+        "设计定价、原型、服务或产品实验。"
+      ],
+      "inputs": [
+        "客户证据",
+        "资源约束",
+        "交付能力"
+      ],
+      "outputs": [
+        "价值主张",
+        "最小 offer",
+        "方案验证计划"
+      ],
+      "workingLogic": [
+        "只解决证据最强的问题。",
+        "以最小成本验证价值和支付。",
+        "明确不承诺的范围与交付边界。"
+      ],
+      "checklist": [
+        "方案对应客户证据",
+        "定价假设可测试",
+        "交付范围与停止条件明确"
+      ],
+      "escalation": [
+        "方案成本超过预算",
+        "需要新增合规或技术责任"
+      ],
+      "doNotDo": [
+        "不以功能数量替代价值验证。",
+        "不做未经批准的长期承诺。"
+      ],
+      "activation": {
+        "activeWhen": [
+          "需要设计、调整或验证 offer、产品、服务或交付方式。"
+        ],
+        "consultedWhen": [
+          "客户或 GTM 实验需要可行性和成本复核。"
+        ],
+        "notApplicableWhen": [
+          "任务仅做客户研究、财务风险或经营汇总。"
+        ],
+        "reassessWhen": [
+          "客户证据、成本、交付能力或监管约束变化。"
+        ]
+      },
+      "externalSkills": []
+    },
+    {
+      "id": "go-to-market-lead",
+      "name": "市场进入负责人",
+      "role": "go-to-market",
+      "when_to_load": [
+        "定位、渠道、销售、增长和转化实验"
+      ],
+      "primary_outputs": [
+        "gtm-plan",
+        "funnel-metrics"
+      ],
+      "quality_gates": [
+        "gtm-gate",
+        "value-gate"
+      ],
+      "responsibilities": [
+        "设计目标客群、信息、渠道、销售和转化实验。",
+        "建立获客成本、转化和复购观测。"
+      ],
+      "inputs": [
+        "目标客户",
+        "offer",
+        "预算与渠道约束"
+      ],
+      "outputs": [
+        "GTM 实验",
+        "漏斗指标",
+        "停止与扩张条件"
+      ],
+      "workingLogic": [
+        "先验证一个细分客户和一个渠道。",
+        "记录触达、响应、转化和成本。",
+        "只有重复证据出现后才扩大投入。"
+      ],
+      "checklist": [
+        "目标客群具体",
+        "渠道和信息可测试",
+        "成本与停止阈值明确"
+      ],
+      "escalation": [
+        "渠道需要敏感数据或外部授权",
+        "获客成本突破预算"
+      ],
+      "doNotDo": [
+        "不把曝光量当作价值验证。",
+        "不在漏斗未成立时扩大投放。"
+      ],
+      "activation": {
+        "activeWhen": [
+          "需要获客、销售、发布、增长、渠道或转化验证。"
+        ],
+        "consultedWhen": [
+          "offer 设计只需校准可销售性。"
+        ],
+        "notApplicableWhen": [
+          "任务处于纯问题发现或内部经营复盘。"
+        ],
+        "reassessWhen": [
+          "客群、信息、渠道、预算或转化数据变化。"
+        ]
+      },
+      "externalSkills": []
+    },
+    {
+      "id": "finance-risk-lead",
+      "name": "财务与风险负责人",
+      "role": "finance-risk",
+      "when_to_load": [
+        "runway、预算、合同、合规、招聘和不可逆风险"
+      ],
+      "primary_outputs": [
+        "runway-plan",
+        "risk-register"
+      ],
+      "quality_gates": [
+        "runway-gate",
+        "risk-gate"
+      ],
+      "responsibilities": [
+        "维护预算、runway、风险和人工审批边界。",
+        "阻断资金、合同、招聘、隐私或合规越权。"
+      ],
+      "inputs": [
+        "预算与现金流",
+        "实验计划",
+        "合同和风险事项"
+      ],
+      "outputs": [
+        "runway 计划",
+        "风险台账",
+        "审批与停止条件"
+      ],
+      "workingLogic": [
+        "先确认现金与时间上限。",
+        "再评估最坏损失和不可逆责任。",
+        "最后给出批准、修改或阻断结论。"
+      ],
+      "checklist": [
+        "runway 和支出上限明确",
+        "高风险事项有人工责任",
+        "停止与回滚条件明确"
+      ],
+      "escalation": [
+        "涉及股权、重大合同、雇佣或监管责任",
+        "runway 低于安全阈值"
+      ],
+      "doNotDo": [
+        "不替代律师或会计师。",
+        "不批准超出授权的资金与合同。"
+      ],
+      "activation": {
+        "activeWhen": [
+          "涉及预算、runway、合同、招聘、隐私、合规或外部承诺。"
+        ],
+        "consultedWhen": [
+          "单一实验只需成本和风险复核。"
+        ],
+        "notApplicableWhen": [
+          "无成本、无外部承诺且可完全回滚的内部分析。"
+        ],
+        "reassessWhen": [
+          "预算、runway、责任、合同或法规变化。"
+        ]
+      },
+      "externalSkills": []
+    },
+    {
+      "id": "operations-delivery-lead",
+      "name": "运营交付负责人",
+      "role": "operations-delivery",
+      "when_to_load": [
+        "里程碑、执行、状态、交付和复盘"
+      ],
+      "primary_outputs": [
+        "workflow-status",
+        "operating-review",
+        "delivery-summary"
+      ],
+      "quality_gates": [
+        "handoff-gate",
+        "delivery-gate"
+      ],
+      "responsibilities": [
+        "维护里程碑、角色计划、交接、证据和交付质量。",
+        "把实验结果转成下一阶段行动与资源计划。"
+      ],
+      "inputs": [
+        "各角色产物",
+        "验证与指标",
+        "风险和创始人决策"
+      ],
+      "outputs": [
+        "状态板",
+        "交接与复盘",
+        "交付摘要"
+      ],
+      "workingLogic": [
+        "先冻结当前里程碑和输入。",
+        "按角色计划推进最小任务。",
+        "交付时只汇总事实、证据、风险和下一步。"
+      ],
+      "checklist": [
+        "状态和责任清晰",
+        "证据与决策可追踪",
+        "下一阶段行动可执行"
+      ],
+      "escalation": [
+        "角色冲突或门禁失败",
+        "里程碑范围和资源发生变化"
+      ],
+      "doNotDo": [
+        "不把活动量包装成业务结果。",
+        "不隐藏失败实验或剩余风险。"
+      ],
+      "activation": {
+        "activeWhen": [
+          "standard/assurance 里程碑、跨角色协作或最终交付。"
+        ],
+        "consultedWhen": [
+          "lightweight 实验只需状态和证据复核。"
+        ],
+        "notApplicableWhen": [
+          "不适用；可由单一负责人兼任但必须保留交付责任。"
+        ],
+        "reassessWhen": [
+          "里程碑、角色、门禁或资源发生变化。"
+        ]
+      },
+      "externalSkills": []
+    }
+  ],
+  "workflows": [
+    {
+      "id": "venture-intake",
+      "title": "创业目标与团队设计",
+      "triggers": [
+        "/venture-team intake",
+        "从零创业",
+        "搭建创业团队"
+      ],
+      "commands": [
+        "/venture-team intake"
+      ],
+      "members": [
+        "founder-strategist",
+        "customer-research-lead",
+        "solution-lead",
+        "go-to-market-lead",
+        "finance-risk-lead",
+        "operations-delivery-lead"
+      ],
+      "execution_mode": "hybrid",
+      "quality_gates": [
+        "value-gate",
+        "complexity-gate",
+        "runway-gate",
+        "delivery-gate"
+      ],
+      "outputs": [
+        "venture-brief",
+        "hypothesis-log",
+        "milestone-plan"
+      ],
+      "stages": [
+        {
+          "name": "Mission",
+          "owner": "founder-strategist",
+          "actions": [
+            "明确使命、目标结果、非目标和关键假设"
+          ],
+          "outputs": [
+            "venture-brief.md"
+          ],
+          "gates": [
+            "value-gate",
+            "complexity-gate"
+          ]
+        },
+        {
+          "name": "Risk Boundary",
+          "owner": "finance-risk-lead",
+          "actions": [
+            "确认 runway、预算、审批和不可逆风险"
+          ],
+          "outputs": [
+            "runway-risk.md"
+          ],
+          "gates": [
+            "runway-gate"
+          ]
+        },
+        {
+          "name": "Plan",
+          "owner": "operations-delivery-lead",
+          "actions": [
+            "形成 30/60/90 天里程碑和角色激活计划"
+          ],
+          "outputs": [
+            "milestone-plan.md"
+          ],
+          "gates": [
+            "delivery-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "customer-validation",
+      "title": "客户与问题验证",
+      "triggers": [
+        "/venture-team discover",
+        "客户发现",
+        "问题验证"
+      ],
+      "commands": [
+        "/venture-team discover"
+      ],
+      "members": [
+        "founder-strategist",
+        "customer-research-lead",
+        "operations-delivery-lead"
+      ],
+      "execution_mode": "hybrid",
+      "quality_gates": [
+        "customer-evidence-gate",
+        "evidence-gate",
+        "decision-gate"
+      ],
+      "outputs": [
+        "customer-evidence",
+        "problem-ranking",
+        "decision-log"
+      ],
+      "stages": [
+        {
+          "name": "Research",
+          "owner": "customer-research-lead",
+          "actions": [
+            "执行访谈、行为和付费信号验证"
+          ],
+          "outputs": [
+            "customer-evidence.md"
+          ],
+          "gates": [
+            "customer-evidence-gate",
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Decision",
+          "owner": "founder-strategist",
+          "actions": [
+            "决定继续、调整或停止问题假设"
+          ],
+          "outputs": [
+            "decision-log.md"
+          ],
+          "gates": [
+            "decision-gate"
+          ]
+        },
+        {
+          "name": "Handoff",
+          "owner": "operations-delivery-lead",
+          "actions": [
+            "交接证据、风险和下一阶段输入"
+          ],
+          "outputs": [
+            "role-handoff.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "offer-validation",
+      "title": "方案与 Offer 验证",
+      "triggers": [
+        "/venture-team offer",
+        "最小方案",
+        "定价验证"
+      ],
+      "commands": [
+        "/venture-team offer"
+      ],
+      "members": [
+        "founder-strategist",
+        "customer-research-lead",
+        "solution-lead",
+        "finance-risk-lead"
+      ],
+      "execution_mode": "hybrid",
+      "quality_gates": [
+        "offer-gate",
+        "evidence-gate",
+        "runway-gate"
+      ],
+      "outputs": [
+        "offer-plan",
+        "solution-experiment",
+        "runway-risk"
+      ],
+      "stages": [
+        {
+          "name": "Offer",
+          "owner": "solution-lead",
+          "actions": [
+            "设计最小可销售方案、定价和交付实验"
+          ],
+          "outputs": [
+            "offer-plan.md"
+          ],
+          "gates": [
+            "offer-gate"
+          ]
+        },
+        {
+          "name": "Evidence Review",
+          "owner": "customer-research-lead",
+          "actions": [
+            "复核方案与客户问题、行为和付费证据"
+          ],
+          "outputs": [
+            "customer-evidence.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Cost Review",
+          "owner": "finance-risk-lead",
+          "actions": [
+            "评估成本、runway、承诺和风险"
+          ],
+          "outputs": [
+            "runway-risk.md"
+          ],
+          "gates": [
+            "runway-gate"
+          ]
+        },
+        {
+          "name": "Decision",
+          "owner": "founder-strategist",
+          "actions": [
+            "批准、修改或停止 offer 实验"
+          ],
+          "outputs": [
+            "decision-log.md"
+          ],
+          "gates": [
+            "offer-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "go-to-market-validation",
+      "title": "市场进入验证",
+      "triggers": [
+        "/venture-team gtm",
+        "获客",
+        "销售和增长"
+      ],
+      "commands": [
+        "/venture-team gtm"
+      ],
+      "members": [
+        "go-to-market-lead",
+        "solution-lead",
+        "finance-risk-lead",
+        "operations-delivery-lead"
+      ],
+      "execution_mode": "hybrid",
+      "quality_gates": [
+        "gtm-gate",
+        "value-gate",
+        "runway-gate",
+        "evidence-gate"
+      ],
+      "outputs": [
+        "gtm-plan",
+        "funnel-metrics",
+        "experiment-report"
+      ],
+      "stages": [
+        {
+          "name": "GTM Experiment",
+          "owner": "go-to-market-lead",
+          "actions": [
+            "设计客群、信息、渠道、销售和转化实验"
+          ],
+          "outputs": [
+            "gtm-plan.md"
+          ],
+          "gates": [
+            "gtm-gate",
+            "value-gate"
+          ]
+        },
+        {
+          "name": "Offer Fit",
+          "owner": "solution-lead",
+          "actions": [
+            "复核 offer 与渠道承诺、交付能力的一致性"
+          ],
+          "outputs": [
+            "offer-plan.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Budget",
+          "owner": "finance-risk-lead",
+          "actions": [
+            "确认获客成本、预算和停止阈值"
+          ],
+          "outputs": [
+            "runway-risk.md"
+          ],
+          "gates": [
+            "runway-gate"
+          ]
+        },
+        {
+          "name": "Review",
+          "owner": "operations-delivery-lead",
+          "actions": [
+            "汇总漏斗、证据、风险和下一轮实验"
+          ],
+          "outputs": [
+            "experiment-report.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operating-review",
+      "title": "经营复盘",
+      "triggers": [
+        "/venture-team operate",
+        "经营复盘",
+        "30/60/90 天计划"
+      ],
+      "commands": [
+        "/venture-team operate"
+      ],
+      "members": [
+        "founder-strategist",
+        "finance-risk-lead",
+        "operations-delivery-lead"
+      ],
+      "execution_mode": "sequential",
+      "quality_gates": [
+        "runway-gate",
+        "decision-gate",
+        "delivery-gate"
+      ],
+      "outputs": [
+        "operating-review",
+        "decision-log",
+        "milestone-plan"
+      ],
+      "stages": [
+        {
+          "name": "Evidence",
+          "owner": "operations-delivery-lead",
+          "actions": [
+            "汇总客户、offer、GTM、交付和指标证据"
+          ],
+          "outputs": [
+            "operating-review.md"
+          ],
+          "gates": [
+            "delivery-gate"
+          ]
+        },
+        {
+          "name": "Runway",
+          "owner": "finance-risk-lead",
+          "actions": [
+            "复核现金流、风险和责任边界"
+          ],
+          "outputs": [
+            "runway-risk.md"
+          ],
+          "gates": [
+            "runway-gate"
+          ]
+        },
+        {
+          "name": "Decision",
+          "owner": "founder-strategist",
+          "actions": [
+            "决定继续、聚焦、转向或停止"
+          ],
+          "outputs": [
+            "decision-log.md",
+            "milestone-plan.md"
+          ],
+          "gates": [
+            "decision-gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "venture-delivery",
+      "title": "创业阶段交付",
+      "triggers": [
+        "/venture-team deliver",
+        "阶段交付",
+        "创业团队总结"
+      ],
+      "commands": [
+        "/venture-team deliver"
+      ],
+      "members": [
+        "operations-delivery-lead",
+        "founder-strategist",
+        "finance-risk-lead"
+      ],
+      "execution_mode": "sequential",
+      "quality_gates": [
+        "evidence-gate",
+        "verification-gate",
+        "runway-gate",
+        "delivery-gate"
+      ],
+      "outputs": [
+        "venture-delivery-summary"
+      ],
+      "stages": [
+        {
+          "name": "Summary",
+          "owner": "operations-delivery-lead",
+          "actions": [
+            "汇总范围、证据、角色、验证、风险和下一步"
+          ],
+          "outputs": [
+            "venture-delivery-summary.md"
+          ],
+          "gates": [
+            "evidence-gate",
+            "verification-gate",
+            "delivery-gate"
+          ]
+        },
+        {
+          "name": "Risk Approval",
+          "owner": "finance-risk-lead",
+          "actions": [
+            "确认 runway、合同、招聘、隐私和合规边界"
+          ],
+          "outputs": [
+            "runway-risk.md"
+          ],
+          "gates": [
+            "runway-gate"
+          ]
+        },
+        {
+          "name": "Founder Decision",
+          "owner": "founder-strategist",
+          "actions": [
+            "确认下一阶段方向、预算和责任"
+          ],
+          "outputs": [
+            "decision-log.md"
+          ],
+          "gates": [
+            "delivery-gate"
+          ]
+        }
+      ]
+    }
+  ],
+  "docs": {
+    "methodologies": [
+      {
+        "path": "docs/methodologies/evidence-based-venture-methodology.md",
+        "title": "证据驱动创业方法论",
+        "sections": [
+          "假设排序",
+          "客户证据",
+          "最小实验",
+          "阶段决策"
+        ],
+        "content": {
+          "假设排序": [
+            "按影响、未知度、验证成本和不可逆性排序。",
+            "每个里程碑只保留少量最高风险假设。"
+          ],
+          "客户证据": [
+            "区分用户意见、真实行为、付费意向和已付费证据。",
+            "记录样本、来源、时间、反向证据和偏差。"
+          ],
+          "最小实验": [
+            "用最小时间和现金验证一个明确假设。",
+            "实验开始前定义成功、失败和停止阈值。"
+          ],
+          "阶段决策": [
+            "继续、聚焦、转向或停止必须引用证据和 runway。",
+            "高影响决策写入 decision log 并设定复盘日期。"
+          ]
+        }
+      }
+    ],
+    "standards": [
+      {
+        "path": "docs/engineering-standards/venture-evidence-standard.md",
+        "title": "创业证据与决策标准",
+        "sections": [
+          "证据等级",
+          "指标纪律",
+          "资金与承诺",
+          "失败处理"
+        ],
+        "content": {
+          "证据等级": [
+            "观点弱于行为，行为弱于付费和重复使用。",
+            "未经来源和时间标记的材料不能支撑高影响决策。"
+          ],
+          "指标纪律": [
+            "指标必须关联价值假设、基线、目标、周期和数据来源。",
+            "曝光、注册等虚荣指标不能替代付费、留存或效率证据。"
+          ],
+          "资金与承诺": [
+            "每个实验声明现金、时间和责任上限。",
+            "合同、招聘、股权和大额支出必须人工批准。"
+          ],
+          "失败处理": [
+            "失败实验保留事实、原因、不确定性和下一步。",
+            "不得通过修改成功标准掩盖失败。"
+          ]
+        }
+      }
+    ],
+    "integrations": [
+      {
+        "path": "docs/integrations/venture-data-contract.md",
+        "title": "创业输入与指标契约",
+        "sections": [
+          "客户材料",
+          "财务材料",
+          "外部数据",
+          "缺失处理"
+        ],
+        "content": {
+          "客户材料": [
+            "访谈、行为和付费证据必须记录样本、来源、时间和上下文。",
+            "敏感客户数据必须最小化并获得授权。"
+          ],
+          "财务材料": [
+            "预算、现金流和 runway 必须由创始人确认口径。",
+            "未经确认的财务数字只能作为待验证假设。"
+          ],
+          "外部数据": [
+            "市场报告、竞品和渠道数据必须记录来源、日期和适用范围。",
+            "不得把公开估算写成公司已验证事实。"
+          ],
+          "缺失处理": [
+            "关键证据缺失时停止对应决策或降低验证等级。",
+            "无法获得专业意见时保留人工复核阻塞。"
+          ]
+        }
+      }
+    ],
+    "qualityGates": [
+      "role-activation-gate",
+      "value-gate",
+      "decision-gate",
+      "handoff-gate",
+      "complexity-gate",
+      "customer-evidence-gate",
+      "offer-gate",
+      "gtm-gate",
+      "runway-gate",
+      "risk-gate",
+      "evidence-gate",
+      "verification-gate",
+      "delivery-gate"
+    ],
+    "rubrics": [
+      "客户证据强度",
+      "问题与 offer 契合度",
+      "GTM 可验证性",
+      "runway 与风险纪律",
+      "角色最小充分性",
+      "交付与复盘完整度"
+    ]
+  },
+  "templates": [
+    {
+      "id": "venture-brief",
+      "path": "venture-brief.md",
+      "title": "创业目标简报",
+      "sections": [
+        "使命与 90 天结果",
+        "目标客户与问题",
+        "资源与 runway",
+        "关键假设",
+        "非目标与停止条件"
+      ],
+      "content": {
+        "使命与 90 天结果": [
+          "写明要验证的业务结果，不用活动量替代结果。"
+        ],
+        "目标客户与问题": [
+          "定义具体客群、场景、痛点和现有替代方案。"
+        ],
+        "资源与 runway": [
+          "记录现金、时间、人员、授权和不可逆约束。"
+        ],
+        "关键假设": [
+          "按影响、未知度和验证成本排序。"
+        ],
+        "非目标与停止条件": [
+          "明确本阶段不做什么，以及何时停止或转向。"
+        ]
+      }
+    },
+    {
+      "id": "customer-evidence",
+      "path": "customer-evidence.md",
+      "title": "客户证据",
+      "sections": [
+        "样本与来源",
+        "事实与行为",
+        "付费信号",
+        "反向证据",
+        "结论与下一步"
+      ],
+      "content": {
+        "样本与来源": [
+          "记录客户类型、数量、日期和招募方式。"
+        ],
+        "事实与行为": [
+          "区分原话、观察行为和团队解释。"
+        ],
+        "付费信号": [
+          "记录预付、合同、试用、时间投入或明确拒绝。"
+        ],
+        "反向证据": [
+          "列出不需要、不愿付费或已有替代方案的证据。"
+        ],
+        "结论与下一步": [
+          "说明继续、调整或停止，以及下一条待验证假设。"
+        ]
+      }
+    },
+    {
+      "id": "offer-plan",
+      "path": "offer-plan.md",
+      "title": "Offer 与方案计划",
+      "sections": [
+        "价值主张",
+        "最小方案",
+        "定价假设",
+        "交付边界",
+        "验证与停止条件"
+      ],
+      "content": {
+        "价值主张": [
+          "关联目标客户、问题证据和可观察结果。"
+        ],
+        "最小方案": [
+          "只包含验证核心价值需要的能力。"
+        ],
+        "定价假设": [
+          "写明价格、支付条件和验证方式。"
+        ],
+        "交付边界": [
+          "明确包含、不包含、时限和责任。"
+        ],
+        "验证与停止条件": [
+          "定义成功、失败、成本和回滚。"
+        ]
+      }
+    },
+    {
+      "id": "gtm-plan",
+      "path": "gtm-plan.md",
+      "title": "GTM 实验计划",
+      "sections": [
+        "目标客群",
+        "信息与渠道",
+        "销售动作",
+        "漏斗指标",
+        "预算与停止条件"
+      ],
+      "content": {
+        "目标客群": [
+          "限定一个可接触的细分市场。"
+        ],
+        "信息与渠道": [
+          "记录价值信息、渠道假设和授权边界。"
+        ],
+        "销售动作": [
+          "定义触达、对话、演示、报价和跟进。"
+        ],
+        "漏斗指标": [
+          "记录触达、响应、合格、转化、成本和周期。"
+        ],
+        "预算与停止条件": [
+          "设定现金、时间、隐私和品牌风险上限。"
+        ]
+      }
+    },
+    {
+      "id": "runway-risk",
+      "path": "runway-risk.md",
+      "title": "Runway 与风险台账",
+      "sections": [
+        "现金与时间",
+        "合同与合规",
+        "招聘与责任",
+        "最坏损失",
+        "审批和停止条件"
+      ],
+      "content": {
+        "现金与时间": [
+          "记录当前基线、预算上限和 runway。"
+        ],
+        "合同与合规": [
+          "列出需要律师、会计或其他专业复核的事项。"
+        ],
+        "招聘与责任": [
+          "说明何时需要真人岗位和最终责任人。"
+        ],
+        "最坏损失": [
+          "评估现金、声誉、客户、隐私和机会成本。"
+        ],
+        "审批和停止条件": [
+          "写明批准人、阈值和无批准阻断。"
+        ]
+      }
+    },
+    {
+      "id": "venture-delivery-summary",
+      "path": "venture-delivery-summary.md",
+      "title": "创业阶段交付摘要",
+      "sections": [
+        "阶段结果",
+        "客户与业务证据",
+        "关键决策",
+        "runway 与风险",
+        "角色和验证等级",
+        "下一阶段计划"
+      ],
+      "content": {
+        "阶段结果": [
+          "说明完成、失败和未完成项。"
+        ],
+        "客户与业务证据": [
+          "关联来源、时间、指标和反向证据。"
+        ],
+        "关键决策": [
+          "记录继续、聚焦、转向或停止及依据。"
+        ],
+        "runway 与风险": [
+          "说明现金、责任、审批和剩余风险。"
+        ],
+        "角色和验证等级": [
+          "记录 rolePlan、执行档位、V0-V4 和未覆盖范围。"
+        ],
+        "下一阶段计划": [
+          "给出 30/60/90 天目标、负责人和复盘时间。"
+        ]
+      }
+    }
+  ],
+  "domainKnowledge": {
+    "concepts": [
+      "问题证据：客户在具体场景中的重复痛点、行为、成本和替代方案。",
+      "Offer：目标客户愿意为明确结果支付的方案、价格和交付承诺。",
+      "GTM：目标客群、信息、渠道、销售动作和转化指标组成的市场进入系统。",
+      "Runway：在当前现金、收入、支出和计划下可持续经营的时间边界。"
+    ],
+    "methods": [
+      "先问题证据，后方案和规模投入。",
+      "按最高风险假设设计最小实验，预先定义成功、失败和停止条件。",
+      "每个里程碑复核客户价值、现金流、责任和下一轮决策。"
+    ],
+    "evidenceChecklist": [
+      "客户证据包含样本、来源、时间、行为和反向证据。",
+      "Offer 包含价值、价格、交付边界和支付验证。",
+      "GTM 包含漏斗、成本、周期和停止阈值。",
+      "资金、合同、招聘和隐私事项有人类责任人。"
+    ],
+    "failureModes": [
+      "只做产品或内容，不验证真实客户问题。",
+      "把访谈好评、曝光或注册当作付费和留存。",
+      "在漏斗和交付能力未成立时扩大团队或投放。",
+      "没有 runway、审批和停止条件就承担长期承诺。"
+    ]
+  },
+  "capabilityMatrix": [
+    {
+      "capability": "创业目标与假设组合",
+      "owner": "founder-strategist",
+      "inputs": [
+        "使命",
+        "资源",
+        "目标结果"
+      ],
+      "outputs": [
+        "venture-brief",
+        "hypothesis-log"
+      ],
+      "gates": [
+        "value-gate",
+        "decision-gate"
+      ],
+      "maturity": "usable"
+    },
+    {
+      "capability": "客户与问题验证",
+      "owner": "customer-research-lead",
+      "inputs": [
+        "客户假设",
+        "访谈和行为证据"
+      ],
+      "outputs": [
+        "customer-evidence",
+        "problem-ranking"
+      ],
+      "gates": [
+        "customer-evidence-gate",
+        "evidence-gate"
+      ],
+      "maturity": "validated"
+    },
+    {
+      "capability": "最小可销售方案",
+      "owner": "solution-lead",
+      "inputs": [
+        "客户证据",
+        "资源约束"
+      ],
+      "outputs": [
+        "offer-plan",
+        "solution-experiment"
+      ],
+      "gates": [
+        "offer-gate"
+      ],
+      "maturity": "usable"
+    },
+    {
+      "capability": "GTM 与转化实验",
+      "owner": "go-to-market-lead",
+      "inputs": [
+        "目标客群",
+        "offer",
+        "预算"
+      ],
+      "outputs": [
+        "gtm-plan",
+        "funnel-metrics"
+      ],
+      "gates": [
+        "gtm-gate",
+        "value-gate"
+      ],
+      "maturity": "usable"
+    },
+    {
+      "capability": "Runway 与风险阻断",
+      "owner": "finance-risk-lead",
+      "inputs": [
+        "预算",
+        "实验计划",
+        "责任事项"
+      ],
+      "outputs": [
+        "runway-plan",
+        "risk-register"
+      ],
+      "gates": [
+        "runway-gate",
+        "risk-gate"
+      ],
+      "maturity": "validated"
+    }
+  ],
+  "acceptanceScenarios": [
+    {
+      "id": "founder-zero-to-ninety-days",
+      "input": "一名从零开始的创业者，希望 90 天内验证市场问题、形成 MVP/服务、拿到首批客户并准备融资材料。",
+      "expectedOutputs": [
+        "venture-brief.md",
+        "customer-evidence.md",
+        "offer-plan.md",
+        "gtm-plan.md",
+        "runway-risk.md",
+        "venture-delivery-summary.md"
+      ],
+      "mustPassGates": [
+        "role-activation-gate",
+        "value-gate",
+        "customer-evidence-gate",
+        "runway-gate",
+        "evidence-gate",
+        "delivery-gate"
+      ],
+      "failureExamples": [
+        "没有客户证据就直接扩大产品研发和招聘。",
+        "没有预算、runway 和停止条件。",
+        "把融资成功或收入增长写成确定性承诺。"
+      ],
+      "expectedWorkflow": "venture-intake",
+      "expectedProfile": "assurance",
+      "minimumVerificationLevel": "V3",
+      "expectedRolePlan": {
+        "active": [
+          "founder-strategist",
+          "customer-research-lead",
+          "finance-risk-lead",
+          "operations-delivery-lead"
+        ],
+        "consulted": [
+          "solution-lead",
+          "go-to-market-lead"
+        ],
+        "notApplicable": []
+      }
+    },
+    {
+      "id": "gtm-before-problem-validation",
+      "input": "创业者要求立即大规模投放获客，但当前没有客户访谈、付费证据和明确 offer。",
+      "expectedOutputs": [
+        "customer-evidence.md",
+        "runway-risk.md",
+        "decision-log.md"
+      ],
+      "mustPassGates": [
+        "customer-evidence-gate",
+        "decision-gate",
+        "runway-gate"
+      ],
+      "failureExamples": [
+        "直接输出大规模投放计划。",
+        "忽略问题、offer 和转化证据缺口。",
+        "没有定义预算和停止阈值。"
+      ],
+      "expectedWorkflow": "customer-validation",
+      "expectedProfile": "assurance",
+      "minimumVerificationLevel": "V2",
+      "expectedRolePlan": {
+        "active": [
+          "founder-strategist",
+          "customer-research-lead",
+          "operations-delivery-lead"
+        ],
+        "consulted": [],
+        "notApplicable": [
+          "solution-lead",
+          "go-to-market-lead",
+          "finance-risk-lead"
+        ]
+      }
+    }
+  ],
+  "dataContracts": [
+    {
+      "source": "创始人目标、资源与约束",
+      "freshness": "每个里程碑开始前重新确认。",
+      "requiredFields": [
+        "90 天目标",
+        "可用现金和时间",
+        "创始人能力与责任",
+        "不可妥协约束"
+      ],
+      "missingDataPolicy": "缺少预算、责任或目标时只输出问题清单，不进入承诺和支出决策。",
+      "allowedUse": [
+        "venture brief",
+        "里程碑",
+        "runway 与风险"
+      ]
+    },
+    {
+      "source": "客户访谈、行为和付费证据",
+      "freshness": "记录样本、日期和当前业务阶段；目标客群变化后重新采集。",
+      "requiredFields": [
+        "客户类型",
+        "场景和问题",
+        "行为或付费信号",
+        "来源与日期",
+        "反向证据"
+      ],
+      "missingDataPolicy": "缺少行为或付费证据时不得声明问题或 offer 已验证。",
+      "allowedUse": [
+        "客户问题排序",
+        "offer 设计",
+        "GTM 和阶段决策"
+      ]
+    }
+  ],
+  "externalSkills": {
+    "skills": [],
+    "roleMap": [],
+    "adapters": [],
+    "installPolicy": "外部市场、财务、法律、设计或销售能力只在用户明确授权后安装；未经授权使用人工研究和本地材料降级。"
+  },
+  "scripts": {
+    "includeContextBuilder": true,
+    "includeExternalSkillInstaller": true,
+    "includeValidation": true
+  },
+  "riskControls": {
+    "domainRiskLevel": "medium",
+    "requiredDisclaimers": [
+      "创业团队输出用于决策辅助，不承诺融资、收入、盈利或产品市场匹配。",
+      "资金、合同、股权、招聘、隐私和监管事项由用户及对应专业责任人最终决定。"
+    ],
+    "blockedClaims": [
+      "不得承诺融资成功、确定性增长、盈利或市场领先。",
+      "未获授权前不得执行付款、签约、招聘、发布或敏感数据处理。"
+    ],
+    "evidenceRules": [
+      "客户和市场结论必须区分事实、行为、付费信号、假设和反向证据。",
+      "关键投入必须关联预算、runway、成功阈值、停止条件和人工批准。"
+    ],
+    "humanReview": {
+      "required": true,
+      "accountableRole": "founder-strategist",
+      "requiredWhen": [
+        "涉及资金、合同、招聘、股权、隐私或对外承诺。",
+        "需要改变目标客户、核心定位或预算上限。"
+      ],
+      "blockedWithoutApproval": true
+    }
+  },
+  "output": {
+    "defaultDirectory": "<skills-root>/venture-building-team",
+    "overwritePolicy": "block"
+  }
+}

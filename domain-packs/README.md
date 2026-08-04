@@ -11,6 +11,7 @@
 
 - `stock-trading`：A 股投资研究与交易计划辅助团队。
 - `product-rd`：产品研发交付团队。
+- `venture-building`：从零创业、客户发现、GTM、runway 与运营交付团队。
 
 校验：
 

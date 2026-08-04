@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { parseArgs, readJson } = require("./template-utils");
+const { validateSpec } = require("./validate-team-spec");
 
 function points(condition, value) {
   return condition ? value : 0;
@@ -85,7 +86,7 @@ function workflowConsistency(spec) {
   const consistent = workflows.filter((workflow) => {
     const stageOwners = new Set((workflow.stages || []).map((stage) => stage.owner));
     const stageGates = new Set((workflow.stages || []).flatMap((stage) => stage.gates || []));
-    const memberCoverage = (workflow.members || []).every((member) => stageOwners.has(member));
+    const memberCoverage = [...stageOwners].every((member) => (workflow.members || []).includes(member));
     const gateCoverage = (workflow.quality_gates || []).every((gate) => stageGates.has(gate));
     return memberCoverage && gateCoverage;
   });
@@ -104,6 +105,32 @@ function buildDimension(id, name, maxScore, score, evidence, improvements) {
 }
 
 function scoreSpec(spec) {
+  const validation = validateSpec(spec);
+  const validationFailures = validation.results.filter((result) => !result.ok).map((result) => result.message);
+  if (validationFailures.length > 0) {
+    return {
+      totalScore: 0,
+      grade: "D",
+      gradeScore: 0,
+      gradeBlockers: [
+        `规格语义校验失败，共 ${validationFailures.length} 项。`,
+        ...validationFailures.slice(0, 20)
+      ],
+      dimensions: [],
+      strengths: [],
+      upgradeOpportunities: [{
+        priority: "high",
+        area: "规格合法性",
+        currentScore: "0/100",
+        recommendation: "先修复 validate-team-spec 报告的所有失败项，再进入评分。"
+      }],
+      capabilityRecommendations: ["修复规格引用、风险控制、路径或治理契约。"],
+      certificationLevel: "invalid",
+      teamVerificationCeiling: "V0",
+      decisionAdvice: "规格无效，不得生成、评级或发布团队 Skill。"
+    };
+  }
+
   const members = spec.members || [];
   const workflows = spec.workflows || [];
   const commands = (spec.commands && spec.commands.items) || [];
@@ -115,6 +142,8 @@ function scoreSpec(spec) {
   const acceptanceScenarios = spec.acceptanceScenarios || [];
   const dataContracts = spec.dataContracts || [];
   const capabilityMatrix = spec.capabilityMatrix || [];
+  const teamDesign = spec.teamDesign || {};
+  const governance = spec.governance || {};
   const coordinator = findCoordinator(spec);
   const docItems = allDocs(docs);
   const docsHaveContent = hasContentForEverySection(docItems);
@@ -140,9 +169,38 @@ function scoreSpec(spec) {
       Array.isArray(scenario.mustPassGates) && scenario.mustPassGates.length > 0 &&
       Array.isArray(scenario.failureExamples) && scenario.failureExamples.length > 0;
   });
+  const blueprintComplete = Boolean(
+    spec.schemaVersion &&
+    teamDesign.problemStatement &&
+    teamDesign.mission &&
+    Array.isArray(teamDesign.targetOutcomes) && teamDesign.targetOutcomes.length > 0 &&
+    Array.isArray(teamDesign.valueMetrics) && teamDesign.valueMetrics.length > 0
+  );
+  const governanceComplete = Boolean(
+    governance.defaultComplexityLevel &&
+    governance.defaultExecutionProfile &&
+    /^V[0-4]$/.test(String(governance.targetVerificationLevel || "")) &&
+    Array.isArray(governance.roleModes) && governance.roleModes.length === 3 &&
+    Array.isArray(governance.requiredGates) && governance.requiredGates.length > 0
+  );
+  const activationComplete = members.length > 0 && members.every((member) => {
+    const activation = member.activation;
+    return activation &&
+      ["activeWhen", "consultedWhen", "notApplicableWhen", "reassessWhen"]
+        .every((field) => Array.isArray(activation[field]) && activation[field].length > 0);
+  });
+  const scenarioExecutionContracts = acceptanceScenarios.length > 0 && acceptanceScenarios.every((scenario) => {
+    return scenario.expectedWorkflow &&
+      scenario.expectedProfile &&
+      /^V[0-4]$/.test(String(scenario.minimumVerificationLevel || "")) &&
+      scenario.expectedRolePlan &&
+      Array.isArray(scenario.expectedRolePlan.active) &&
+      Array.isArray(scenario.expectedRolePlan.consulted) &&
+      Array.isArray(scenario.expectedRolePlan.notApplicable);
+  });
 
   const targetFitScore =
-    points(spec.skill && spec.skill.domain, 2) +
+    points(blueprintComplete, 2) +
     points(spec.skill && Array.isArray(spec.skill.targetUsers) && spec.skill.targetUsers.length > 0, 2) +
     points(spec.skill && spec.skill.primaryValue, 2) +
     points(commands.length >= 3, 2) +
@@ -153,14 +211,14 @@ function scoreSpec(spec) {
     points(Boolean(coordinator), 3) +
     points(members.every((member) => Array.isArray(member.responsibilities) && member.responsibilities.length > 0), 3) +
     points(workflowMemberCoverage(spec) === 1, 3) +
-    points(new Set(members.map((member) => member.role)).size >= Math.min(3, members.length), 3);
+    points(activationComplete, 3);
 
   const workflowScore =
     points(commandWorkflowCoverage(spec) === 1, 3) +
     points(workflowStageQuality(spec) === 1, 4) +
     points(workflowConsistency(spec) === 1, 4) +
     points(workflows.every((workflow) => Array.isArray(workflow.outputs) && workflow.outputs.length > 0), 2) +
-    points(workflows.some((workflow) => workflow.execution_mode === "hybrid") || workflows.length <= 2, 1) +
+    points(governanceComplete, 1) +
     points(commands.length >= workflows.length, 1);
 
   const assetScore =
@@ -181,17 +239,25 @@ function scoreSpec(spec) {
 
   const scenarioScore =
     points(acceptanceScenarios.length >= 2, 5) +
-    points(scenarioQuality, 4) +
+    points(scenarioQuality && scenarioExecutionContracts, 4) +
     points(dataContracts.length > 0, 3) +
     points(capabilityMatrix.length >= 3, 3);
 
   const highRisk = riskControls.domainRiskLevel === "high";
+  const humanReview = riskControls.humanReview || governance.humanReview || {};
+  const humanReviewComplete = !highRisk || (
+    humanReview.required === true &&
+    humanReview.blockedWithoutApproval === true &&
+    humanReview.accountableRole &&
+    Array.isArray(humanReview.requiredWhen) &&
+    humanReview.requiredWhen.length > 0
+  );
   const riskScore =
     points(["low", "medium", "high"].includes(riskControls.domainRiskLevel), 2) +
     points(Array.isArray(riskControls.requiredDisclaimers) && riskControls.requiredDisclaimers.length > 0, 2) +
     points(Array.isArray(riskControls.blockedClaims) && riskControls.blockedClaims.length > 0, 2) +
     points(Array.isArray(riskControls.evidenceRules) && riskControls.evidenceRules.length > 0, 2) +
-    points(Array.isArray(docs.qualityGates) && docs.qualityGates.length > 0, 2);
+    points(Array.isArray(docs.qualityGates) && docs.qualityGates.length > 0 && humanReviewComplete, 2);
 
   const dimensions = [
     buildDimension(
@@ -201,6 +267,7 @@ function scoreSpec(spec) {
       targetFitScore,
       [
         `目标用户数量：${spec.skill && spec.skill.targetUsers ? spec.skill.targetUsers.length : 0}`,
+        `问题与价值蓝图：${blueprintComplete ? "完整" : "缺失或不完整"}`,
         `命令数量：${commands.length}`,
         `是否包含 intake/deliver：${hasCommandNamed(spec, "intake") && (hasCommandNamed(spec, "deliver") || hasCommandNamed(spec, "delivery")) ? "是" : "否"}`
       ],
@@ -217,7 +284,8 @@ function scoreSpec(spec) {
       [
         `角色数量：${members.length}`,
         `角色域数量：${new Set(members.map((member) => member.role)).size}`,
-        `协调/交付角色：${coordinator ? coordinator.id : "缺失"}`
+        `协调/交付角色：${coordinator ? coordinator.id : "缺失"}`,
+        `显式激活规则：${activationComplete ? "完整" : "缺失或不完整"}`
       ],
       [
         ...(!coordinator ? ["补充 delivery-manager 或 coordinator 角色，负责状态、证据、风险和交付。"] : []),
@@ -231,6 +299,7 @@ function scoreSpec(spec) {
       workflowScore,
       [
         `工作流数量：${workflows.length}`,
+        `执行治理：${governanceComplete ? "完整" : "缺失或不完整"}`,
         `命令映射覆盖率：${Math.round(commandWorkflowCoverage(spec) * 100)}%`,
           `阶段完整率：${Math.round(workflowStageQuality(spec) * 100)}%`,
           `声明-阶段-门禁一致率：${Math.round(workflowConsistency(spec) * 100)}%`
@@ -286,6 +355,7 @@ function scoreSpec(spec) {
         [
           `验收场景数量：${acceptanceScenarios.length}`,
           `场景字段完整：${scenarioQuality ? "是" : "否"}`,
+          `执行期望完整：${scenarioExecutionContracts ? "是" : "否"}`,
           `数据契约数量：${dataContracts.length}`,
           `能力矩阵数量：${capabilityMatrix.length}`
         ],
@@ -305,12 +375,15 @@ function scoreSpec(spec) {
         `风险等级：${riskControls.domainRiskLevel || "缺失"}`,
         `免责声明数量：${Array.isArray(riskControls.requiredDisclaimers) ? riskControls.requiredDisclaimers.length : 0}`,
         `禁止性承诺数量：${Array.isArray(riskControls.blockedClaims) ? riskControls.blockedClaims.length : 0}`,
-        `证据规则数量：${Array.isArray(riskControls.evidenceRules) ? riskControls.evidenceRules.length : 0}`
+        `证据规则数量：${Array.isArray(riskControls.evidenceRules) ? riskControls.evidenceRules.length : 0}`,
+        `高风险人工复核：${humanReviewComplete ? "满足" : "缺失"}`
       ],
       [
         ...(highRisk && (!Array.isArray(riskControls.requiredDisclaimers) || riskControls.requiredDisclaimers.length === 0) ? ["高风险团队必须补充免责声明。"] : []),
         ...(highRisk && (!Array.isArray(riskControls.blockedClaims) || riskControls.blockedClaims.length === 0) ? ["高风险团队必须补充禁止性承诺。"] : []),
         ...(highRisk && (!Array.isArray(riskControls.evidenceRules) || riskControls.evidenceRules.length === 0) ? ["高风险团队必须补充证据规则。"] : [])
+        ,
+        ...(!humanReviewComplete ? ["高风险团队必须指定人工责任角色、复核触发条件和无批准阻断策略。"] : [])
       ]
     )
   ];
@@ -331,6 +404,9 @@ function scoreSpec(spec) {
     ...(!coordinator ? ["新增交付/协调角色：delivery-manager 或 workflow-coordinator"] : []),
     ...(templates.length < Math.min(3, workflows.length) ? ["新增核心模板：brief、analysis/report、risk-register、delivery-summary"] : []),
       ...(!domainKnowledgeComplete ? ["新增领域知识包：概念、方法、证据清单、失败模式"] : []),
+      ...(!blueprintComplete ? ["新增 teamDesign：问题、使命、目标结果、约束、假设和价值指标"] : []),
+      ...(!governanceComplete ? ["新增 governance：复杂度、执行档位、验证等级、角色模式和必需门禁"] : []),
+      ...(!activationComplete ? ["为每个成员补充 active、consulted、not applicable 和重评条件"] : []),
       ...(acceptanceScenarios.length < 2 ? ["新增 golden 验收场景，用真实输入验证团队输出"] : []),
       ...(dataContracts.length === 0 ? ["新增数据契约，约束来源、时效、缺失处理和允许用途"] : []),
       ...(declaredExternalSkills && !adaptersComplete ? ["新增 Capability Adapter Registry，约束外部能力的输入输出、授权和降级路径"] : []),
@@ -345,13 +421,18 @@ function scoreSpec(spec) {
 
   const aGradeBlockers = [
     ...(genericDraft ? ["generic-draft 通用草案未命中内置 domain pack，不得评为 A 级团队。"] : []),
+    ...(!blueprintComplete ? ["teamDesign 未完整定义问题、使命、目标结果和价值指标。"] : []),
+    ...(!governanceComplete ? ["governance 未完整定义复杂度、执行档位、验证等级和必需门禁。"] : []),
+    ...(!activationComplete ? ["members[].activation 未完整覆盖角色参与与重评条件。"] : []),
     ...(!domainKnowledgeComplete ? ["domainKnowledge 未完整覆盖概念、方法、证据清单和失败模式。"] : []),
     ...(!docsHaveContent ? ["docs 内容未覆盖每个章节的具体执行规则。"] : []),
     ...(!templatesHaveContent ? ["templates 内容未覆盖每个章节的填写规则。"] : []),
     ...(acceptanceScenarios.length < 2 || !scenarioQuality ? ["acceptanceScenarios 少于 2 个或字段不完整。"] : []),
+    ...(!scenarioExecutionContracts ? ["acceptanceScenarios 缺少 expectedWorkflow、expectedRolePlan、expectedProfile 或 minimumVerificationLevel。"] : []),
     ...(dataContracts.length === 0 ? ["dataContracts 缺失。"] : []),
     ...(capabilityMatrix.length < 3 ? ["capabilityMatrix 少于 3 项。"] : []),
-    ...(declaredExternalSkills && !adaptersComplete ? ["声明 external skills 但缺少完整 externalSkills.adapters。"] : [])
+    ...(declaredExternalSkills && !adaptersComplete ? ["声明 external skills 但缺少完整 externalSkills.adapters。"] : []),
+    ...(!humanReviewComplete ? ["高风险团队缺少强制人工复核和无批准阻断策略。"] : [])
   ];
   const gradeScore = aGradeBlockers.length > 0 ? Math.min(totalScore, 89) : totalScore;
 
@@ -366,10 +447,12 @@ function scoreSpec(spec) {
       .map((dimension) => `${dimension.name} 达到 ${dimension.score}/${dimension.maxScore}`),
     upgradeOpportunities,
     capabilityRecommendations,
+    certificationLevel: aGradeBlockers.length === 0 ? "contract-validated" : "draft",
+    teamVerificationCeiling: "V0",
     decisionAdvice: aGradeBlockers.length > 0
-      ? `存在 ${aGradeBlockers.length} 个 A 级阻断项，不得按 A 级团队发布。`
+      ? `存在 ${aGradeBlockers.length} 个 A 级阻断项，不得按 A 级蓝图发布。`
       : totalScore >= 90
-        ? "可作为高质量团队 Skill 交付，后续按业务实战反馈迭代。"
+        ? "可作为高质量团队蓝图交付；业务能力初始为 V0，必须执行代表性任务后再提升验证等级。"
         : totalScore >= 80
         ? "可交付使用，建议优先处理 medium/high 升级项。"
         : totalScore >= 70
@@ -396,6 +479,8 @@ function renderScoreMarkdown(spec, score) {
 - 总分：${score.totalScore}/100
 - 等级：${score.grade}
 - 等级判定分：${score.gradeScore}/100
+- 规格成熟度：${score.certificationLevel}
+- 生成团队验证上限：${score.teamVerificationCeiling}
 - 决策建议：${score.decisionAdvice}
 
 ## A 级阻断项

@@ -1,4 +1,5 @@
 {
+  "schemaVersion": "2.0.0",
   "skill": {
     "id": "stock-trading-team",
     "name": "A Stock Trading Research Team Skill",
@@ -10,6 +11,83 @@
       "需要风险控制和交易复盘框架的个人研究者"
     ],
     "primaryValue": "把市场环境、板块题材、个股量价、策略假设、仓位风险和复盘纪律沉淀为可验证的研究流程。"
+  },
+  "teamDesign": {
+    "problemStatement": "个人研究者需要把 A 股市场、板块、个股、策略与风险判断组织为可追踪、可复核的研究流程。",
+    "mission": "提供研究辅助团队，先证据、后策略、先风险、后交付，不替代用户或持牌投顾承担投资决策。",
+    "targetOutcomes": [
+      "市场、板块和个股判断均有来源、时效、反向证据和置信度。",
+      "策略计划包含触发、失效、仓位、止损和复盘条件。",
+      "禁止性承诺和缺失证据在交付前被风险角色阻断。"
+    ],
+    "stakeholders": [
+      "个人研究者",
+      "使用该 Skill 的 Agent 用户",
+      "最终投资决策和风险责任人"
+    ],
+    "constraints": [
+      "不构成投资建议，不替代持牌投顾。",
+      "不承诺收益，不代替用户下单。",
+      "行情、公告、新闻和指标必须有来源与时间。"
+    ],
+    "nonGoals": [
+      "不输出确定性买卖指令。",
+      "不执行交易或管理真实资金。"
+    ],
+    "assumptions": [
+      "用户会提供标的、周期和风险偏好。",
+      "外部金融数据能力只有在授权后才可使用。"
+    ],
+    "valueMetrics": [
+      {
+        "name": "研究结论证据覆盖率",
+        "baseline": "待首轮真实研究采集",
+        "target": "每个核心结论均映射来源、时效、反证和失效条件",
+        "evidenceSource": "evidence-index、研究报告和人工复核记录",
+        "reviewCadence": "每次研究交付后"
+      },
+      {
+        "name": "高风险承诺误放行率",
+        "baseline": "0",
+        "target": "持续为 0",
+        "evidenceSource": "risk gate 和 acceptance runner",
+        "reviewCadence": "每次发布"
+      }
+    ]
+  },
+  "governance": {
+    "defaultComplexityLevel": "L",
+    "defaultExecutionProfile": "assurance",
+    "targetVerificationLevel": "V3",
+    "roleModes": [
+      "active",
+      "consulted",
+      "not_applicable"
+    ],
+    "reassessmentTriggers": [
+      "研究范围、时间周期、风险偏好或数据来源变化。",
+      "数据冲突、验证失败、外部能力不可用或出现确定性交易诉求。"
+    ],
+    "requiredGates": [
+      "role-activation-gate",
+      "value-gate",
+      "decision-gate",
+      "handoff-gate",
+      "complexity-gate",
+      "evidence-gate",
+      "verification-gate",
+      "disclaimer-gate",
+      "delivery-gate"
+    ],
+    "humanReview": {
+      "required": true,
+      "accountableRole": "risk-manager",
+      "requiredWhen": [
+        "策略计划涉及真实仓位、止损或用户准备采取行动。",
+        "数据缺失、冲突或输出接近确定性投资建议。"
+      ],
+      "blockedWithoutApproval": true
+    }
   },
   "commands": {
     "prefix": "/stock-team",
@@ -108,6 +186,20 @@
         "不承诺收益。",
         "不输出确定性买卖指令。"
       ],
+      "activation": {
+        "activeWhen": [
+          "需要形成策略假设、交易观察计划或适用行情判断。"
+        ],
+        "consultedWhen": [
+          "只需复核已有策略的触发、失效或周期假设。"
+        ],
+        "notApplicableWhen": [
+          "任务仅做数据整理、输入澄清或交付格式检查。"
+        ],
+        "reassessWhen": [
+          "市场环境、风险偏好或策略证据发生变化。"
+        ]
+      },
       "externalSkills": [
         "finance-data-analysis"
       ]
@@ -160,6 +252,20 @@
         "不把消息传闻当作确定事实。",
         "不忽略市场整体风险。"
       ],
+      "activation": {
+        "activeWhen": [
+          "任务涉及指数环境、板块轮动、政策或题材持续性。"
+        ],
+        "consultedWhen": [
+          "个股或策略结论只需市场环境校准。"
+        ],
+        "notApplicableWhen": [
+          "任务仅做执行纪律、交付汇总或不依赖市场环境的数据工作。"
+        ],
+        "reassessWhen": [
+          "行情时效、政策事实或市场风险偏好变化。"
+        ]
+      },
       "externalSkills": [
         "finance-data-analysis"
       ]
@@ -213,6 +319,20 @@
         "不只基于单一指标下结论。",
         "不输出保证上涨或保证盈利。"
       ],
+      "activation": {
+        "activeWhen": [
+          "任务涉及具体个股、量价形态、公告或事件催化。"
+        ],
+        "consultedWhen": [
+          "板块或策略研究需要一个有界个股样本。"
+        ],
+        "notApplicableWhen": [
+          "任务只分析指数、板块或研究流程。"
+        ],
+        "reassessWhen": [
+          "标的、时间周期、公告或关键价格证据变化。"
+        ]
+      },
       "externalSkills": [
         "finance-data-analysis"
       ]
@@ -266,6 +386,20 @@
         "不替用户承担投资决策。",
         "不删除风险提示。"
       ],
+      "activation": {
+        "activeWhen": [
+          "涉及策略、仓位、止损、流动性、真实行动或最终交付。"
+        ],
+        "consultedWhen": [
+          "输入或分析阶段只需确认风险边界。"
+        ],
+        "notApplicableWhen": [
+          "不适用；高风险研究至少需要风险经理复核。"
+        ],
+        "reassessWhen": [
+          "用户风险偏好、仓位、数据质量或禁止性承诺风险变化。"
+        ]
+      },
       "externalSkills": []
     },
     {
@@ -317,6 +451,20 @@
         "不伪造行情数据。",
         "不隐藏数据缺失。"
       ],
+      "activation": {
+        "activeWhen": [
+          "需要数据来源、指标口径、时效、缺失或回测证据。"
+        ],
+        "consultedWhen": [
+          "只需复核一个数据来源或指标口径。"
+        ],
+        "notApplicableWhen": [
+          "任务仅做已有材料的执行纪律或交付格式整理。"
+        ],
+        "reassessWhen": [
+          "数据来源冲突、过期、缺失或外部能力不可用。"
+        ]
+      },
       "externalSkills": [
         "finance-data-analysis"
       ]
@@ -369,6 +517,20 @@
         "不代替用户下单。",
         "不鼓励加杠杆或满仓。"
       ],
+      "activation": {
+        "activeWhen": [
+          "需要执行检查表、纪律提醒或交易后复盘。"
+        ],
+        "consultedWhen": [
+          "策略方案只需检查是否可执行。"
+        ],
+        "notApplicableWhen": [
+          "任务仅做市场、板块、个股或数据分析。"
+        ],
+        "reassessWhen": [
+          "用户准备采取行动、偏离计划或风险边界变化。"
+        ]
+      },
       "externalSkills": []
     },
     {
@@ -420,6 +582,20 @@
         "不隐藏风险。",
         "不把研究结论包装成投资建议。"
       ],
+      "activation": {
+        "activeWhen": [
+          "需要工作流编排、跨角色裁决、状态、证据或最终交付。"
+        ],
+        "consultedWhen": [
+          "单一分析任务只需复核状态和结论边界。"
+        ],
+        "notApplicableWhen": [
+          "不适用；可由单一负责人兼任但必须保留交付责任。"
+        ],
+        "reassessWhen": [
+          "角色冲突、门禁失败、范围或验证等级变化。"
+        ]
+      },
       "externalSkills": []
     }
   ],
@@ -927,10 +1103,16 @@
     ],
     "qualityGates": [
       "intake-gate",
+      "role-activation-gate",
+      "value-gate",
+      "decision-gate",
+      "handoff-gate",
+      "complexity-gate",
       "strategy-gate",
       "risk-gate",
       "data-quality-gate",
       "evidence-gate",
+      "verification-gate",
       "discipline-gate",
       "disclaimer-gate",
       "delivery-gate"
@@ -1289,7 +1471,24 @@
         "直接输出买入或卖出指令。",
         "未标注行情数据来源和更新时间。",
         "没有列出反向证据或失效条件。"
-      ]
+      ],
+      "expectedWorkflow": "market-stock-analysis",
+      "expectedProfile": "assurance",
+      "minimumVerificationLevel": "V3",
+      "expectedRolePlan": {
+        "active": [
+          "market-researcher",
+          "stock-analyst",
+          "data-analyst"
+        ],
+        "consulted": [],
+        "notApplicable": [
+          "strategy-lead",
+          "risk-manager",
+          "execution-coach",
+          "delivery-manager"
+        ]
+      }
     },
     {
       "id": "theme-rotation-analysis",
@@ -1308,7 +1507,25 @@
         "把传闻当作确定政策或公告。",
         "没有区分事实、假设和未验证信息。",
         "未说明板块退潮或题材失效条件。"
-      ]
+      ],
+      "expectedWorkflow": "market-stock-analysis",
+      "expectedProfile": "assurance",
+      "minimumVerificationLevel": "V3",
+      "expectedRolePlan": {
+        "active": [
+          "market-researcher",
+          "data-analyst"
+        ],
+        "consulted": [
+          "stock-analyst"
+        ],
+        "notApplicable": [
+          "strategy-lead",
+          "risk-manager",
+          "execution-coach",
+          "delivery-manager"
+        ]
+      }
     }
   ],
   "dataContracts": [
@@ -1443,7 +1660,16 @@
       "所有结论必须带证据、置信度和不确定性来源。",
       "所有策略必须包含止损条件、失效条件和复盘计划。",
       "行情、公告、新闻和指标必须标注来源与时间。"
-    ]
+    ],
+    "humanReview": {
+      "required": true,
+      "accountableRole": "risk-manager",
+      "requiredWhen": [
+        "策略计划涉及真实仓位、止损或用户准备采取行动。",
+        "数据缺失、冲突或输出接近确定性投资建议。"
+      ],
+      "blockedWithoutApproval": true
+    }
   },
   "output": {
     "defaultDirectory": "<skills-root>/stock-trading-team",

@@ -141,6 +141,10 @@ function validateSpec(spec, options = {}) {
   reporter.record(isObject(spec), "spec is object");
   if (!isObject(spec)) return reporter;
 
+  if (spec.schemaVersion !== undefined) {
+    reporter.record(/^2\.\d+\.\d+$/.test(String(spec.schemaVersion)), "schemaVersion uses 2.x semantic version");
+  }
+
   const skill = requireObject(reporter, spec, "skill", "spec");
   if (skill) {
     const id = requireString(reporter, skill, "id", "skill");
@@ -149,6 +153,26 @@ function validateSpec(spec, options = {}) {
       requireString(reporter, skill, field, "skill");
     }
     requireArray(reporter, skill, "targetUsers", "skill");
+  }
+
+  if (spec.teamDesign !== undefined) {
+    const teamDesign = requireObject(reporter, spec, "teamDesign", "spec");
+    if (teamDesign) {
+      for (const field of ["problemStatement", "mission"]) {
+        requireString(reporter, teamDesign, field, "teamDesign");
+      }
+      for (const field of ["targetOutcomes", "stakeholders", "constraints", "nonGoals", "assumptions"]) {
+        validateStringList(reporter, teamDesign[field], `teamDesign.${field}`);
+      }
+      const valueMetrics = requireArray(reporter, teamDesign, "valueMetrics", "teamDesign");
+      for (const metric of valueMetrics) {
+        reporter.record(isObject(metric), "teamDesign.valueMetrics entry is object");
+        if (!isObject(metric)) continue;
+        for (const field of ["name", "baseline", "target", "evidenceSource", "reviewCadence"]) {
+          requireString(reporter, metric, field, `teamDesign.valueMetric ${metric.name || "unknown"}`);
+        }
+      }
+    }
   }
 
   const commands = requireObject(reporter, spec, "commands", "spec");
@@ -191,6 +215,14 @@ function validateSpec(spec, options = {}) {
     ]) {
       requireArray(reporter, member, field, `member ${id}`);
     }
+    if (member.activation !== undefined) {
+      const activation = requireObject(reporter, member, "activation", `member ${id}`);
+      if (activation) {
+        for (const field of ["activeWhen", "consultedWhen", "notApplicableWhen", "reassessWhen"]) {
+          validateStringList(reporter, activation[field], `member ${id}.activation.${field}`);
+        }
+      }
+    }
   }
   validateUniqueIds(reporter, members, "member");
 
@@ -224,9 +256,7 @@ function validateSpec(spec, options = {}) {
       for (const field of ["actions", "outputs", "gates"]) requireArray(reporter, stage, field, `workflow ${id} stage ${stage.name || "unknown"}`);
       for (const gate of stage.gates || []) stageGates.add(gate);
     }
-    for (const memberId of workflow.members || []) {
-      reporter.record(stageOwners.has(memberId), `workflow ${id} declared member owns at least one stage: ${memberId}`);
-    }
+    reporter.record(stageOwners.size > 0, `workflow ${id} has at least one accountable stage owner`);
     for (const gate of workflow.quality_gates || []) {
       reporter.record(stageGates.has(gate), `workflow ${id} declared gate appears in stage gates: ${gate}`);
     }
@@ -256,6 +286,39 @@ function validateSpec(spec, options = {}) {
         requireString(reporter, doc, "title", label);
         const sections = requireArray(reporter, doc, "sections", label);
         validateContentMap(reporter, doc.content, label, sections);
+      }
+    }
+  }
+
+  if (spec.governance !== undefined) {
+    const governance = requireObject(reporter, spec, "governance", "spec");
+    if (governance) {
+      reporter.record(["S", "M", "L", "XL"].includes(governance.defaultComplexityLevel), "governance.defaultComplexityLevel is valid");
+      reporter.record(
+        ["lightweight", "standard", "assurance"].includes(governance.defaultExecutionProfile),
+        "governance.defaultExecutionProfile is valid"
+      );
+      reporter.record(/^V[0-4]$/.test(String(governance.targetVerificationLevel || "")), "governance.targetVerificationLevel is valid");
+      const roleModes = requireArray(reporter, governance, "roleModes", "governance");
+      for (const mode of ["active", "consulted", "not_applicable"]) {
+        reporter.record(roleModes.includes(mode), `governance.roleModes includes ${mode}`);
+      }
+      validateStringList(reporter, governance.reassessmentTriggers, "governance.reassessmentTriggers");
+      validateStringList(reporter, governance.requiredGates, "governance.requiredGates");
+      for (const gate of governance.requiredGates || []) {
+        reporter.record(qualityGateIds.has(gate), `governance.requiredGates references known quality gate: ${gate}`);
+      }
+      const humanReview = requireObject(reporter, governance, "humanReview", "governance");
+      if (humanReview) {
+        requireBoolean(reporter, humanReview, "required", "governance.humanReview");
+        requireBoolean(reporter, humanReview, "blockedWithoutApproval", "governance.humanReview");
+        reporter.record(typeof humanReview.accountableRole === "string", "governance.humanReview.accountableRole is string");
+        reporter.record(Array.isArray(humanReview.requiredWhen), "governance.humanReview.requiredWhen is array");
+        if (humanReview.required) {
+          reporter.record(memberIds.has(humanReview.accountableRole), "governance human review accountableRole references existing member");
+          validateStringList(reporter, humanReview.requiredWhen, "governance.humanReview.requiredWhen");
+          reporter.record(humanReview.blockedWithoutApproval === true, "required human review blocks delivery without approval");
+        }
       }
     }
   }
@@ -308,6 +371,45 @@ function validateSpec(spec, options = {}) {
     }
     for (const gate of scenario.mustPassGates || []) {
       reporter.record(qualityGateIds.has(gate), `acceptance ${id} references known quality gate: ${gate}`);
+    }
+    if (scenario.expectedWorkflow !== undefined) {
+      reporter.record(workflowIds.has(scenario.expectedWorkflow), `acceptance ${id} expectedWorkflow references known workflow`);
+    }
+    if (scenario.expectedProfile !== undefined) {
+      reporter.record(
+        ["lightweight", "standard", "assurance"].includes(scenario.expectedProfile),
+        `acceptance ${id} expectedProfile is valid`
+      );
+    }
+    if (scenario.minimumVerificationLevel !== undefined) {
+      reporter.record(/^V[0-4]$/.test(String(scenario.minimumVerificationLevel)), `acceptance ${id} minimumVerificationLevel is valid`);
+    }
+    if (scenario.expectedRolePlan !== undefined) {
+      reporter.record(isObject(scenario.expectedRolePlan), `acceptance ${id} expectedRolePlan is object`);
+      if (isObject(scenario.expectedRolePlan)) {
+        const seenRoles = new Set();
+        for (const field of ["active", "consulted", "notApplicable"]) {
+          const roles = scenario.expectedRolePlan[field];
+          reporter.record(Array.isArray(roles), `acceptance ${id} expectedRolePlan.${field} is array`);
+          for (const role of roles || []) {
+            reporter.record(memberIds.has(role), `acceptance ${id} expectedRolePlan.${field} references existing member: ${role}`);
+            reporter.record(!seenRoles.has(role), `acceptance ${id} role appears in only one expected mode: ${role}`);
+            seenRoles.add(role);
+          }
+        }
+        if (scenario.expectedWorkflow && workflowIds.has(scenario.expectedWorkflow)) {
+          const expectedWorkflow = workflows.find((workflow) => workflow.id === scenario.expectedWorkflow);
+          for (const role of [
+            ...(scenario.expectedRolePlan.active || []),
+            ...(scenario.expectedRolePlan.consulted || [])
+          ]) {
+            reporter.record(
+              (expectedWorkflow.members || []).includes(role),
+              `acceptance ${id} participating role is a candidate in expected workflow: ${role}`
+            );
+          }
+        }
+      }
     }
   }
 
@@ -389,6 +491,23 @@ function validateSpec(spec, options = {}) {
       const ok = Array.isArray(value);
       reporter.record(ok, `riskControls.${field} is array`);
       if (level === "high") reporter.record(isNonEmptyArray(value), `high risk requires riskControls.${field}`);
+    }
+    if (riskControls.humanReview !== undefined || level === "high") {
+      const humanReview = requireObject(reporter, riskControls, "humanReview", "riskControls");
+      if (humanReview) {
+        requireBoolean(reporter, humanReview, "required", "riskControls.humanReview");
+        requireBoolean(reporter, humanReview, "blockedWithoutApproval", "riskControls.humanReview");
+        reporter.record(typeof humanReview.accountableRole === "string", "riskControls.humanReview.accountableRole is string");
+        reporter.record(Array.isArray(humanReview.requiredWhen), "riskControls.humanReview.requiredWhen is array");
+        if (humanReview.required) {
+          reporter.record(memberIds.has(humanReview.accountableRole), "riskControls human review accountableRole references existing member");
+          validateStringList(reporter, humanReview.requiredWhen, "riskControls.humanReview.requiredWhen");
+        }
+        if (level === "high") {
+          reporter.record(humanReview.required === true, "high risk requires human review");
+          reporter.record(humanReview.blockedWithoutApproval === true, "high risk blocks delivery without human approval");
+        }
+      }
     }
   }
 

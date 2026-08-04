@@ -12,7 +12,15 @@ const REQUIRED_GENERATED_FILES = [
   "docs/acceptance-scenarios.md",
   "docs/quality-gates.md",
   "docs/quality-rubrics.md",
-  "docs/integrations/data-contracts.md"
+  "docs/team-operating-model.md",
+  "docs/execution-methodology.md",
+  "docs/verification-methodology.md",
+  "docs/integrations/data-contracts.md",
+  "assets/templates/decision-log.md",
+  "assets/templates/risk-register.md",
+  "assets/templates/role-handoff.md",
+  "assets/templates/evidence-index.md",
+  "assets/templates/delivery-summary.md"
 ];
 
 function readJson(filePath) {
@@ -110,6 +118,11 @@ function run(root) {
   const report = readJson(reportPath);
   const scenarios = report.acceptanceScenarios || [];
   const riskControls = report.riskControls || {};
+  const teamContract = report.teamContract || {};
+  const memberIds = new Set(teamContract.memberIds || []);
+  const workflows = new Map((teamContract.workflows || []).map((workflow) => [workflow.id, workflow]));
+  const executionProfiles = new Set(teamContract.executionProfiles || []);
+  const verificationLevels = new Set(teamContract.verificationLevels || []);
   const plannedFiles = new Set((report.plannedFiles || []).map(normalizeRelativePath).filter(Boolean));
   const text = allText(root);
   const acceptanceDoc = readText(root, "docs/acceptance-scenarios.md");
@@ -132,6 +145,12 @@ function run(root) {
   record(results, report.counts && report.counts.dataContracts > 0, "generation-report has data contracts");
   record(results, report.counts && report.counts.capabilities > 0, "generation-report has capability matrix entries");
   record(results, scenarios.length > 0, "generation-report has acceptance scenarios");
+  record(results, Boolean(report.teamDesign && report.teamDesign.problemStatement), "generation-report has problem and value blueprint");
+  record(results, Boolean(report.governance && report.governance.defaultExecutionProfile), "generation-report has governance model");
+  record(results, memberIds.size > 0, "generation-report has team member contract");
+  record(results, workflows.size > 0, "generation-report has workflow contract");
+  record(results, report.verification && report.verification.factoryVerificationLevel === "V2", "factory contract verification is V2");
+  record(results, report.verification && report.verification.generatedTeamVerificationLevel === "V0", "new generated team remains V0 before domain execution");
 
   for (const scenario of scenarios) {
     record(results, Boolean(scenario.id), `scenario has id: ${scenario.id || "unknown"}`);
@@ -141,6 +160,34 @@ function run(root) {
     record(results, Array.isArray(scenario.expectedOutputs) && scenario.expectedOutputs.length > 0, `scenario ${scenario.id} has expected outputs`);
     record(results, Array.isArray(scenario.mustPassGates) && scenario.mustPassGates.length > 0, `scenario ${scenario.id} has required gates`);
     record(results, Array.isArray(scenario.failureExamples) && scenario.failureExamples.length > 0, `scenario ${scenario.id} has failure examples`);
+    const requiresExecutionContract = report.evaluation && report.evaluation.grade === "A";
+    if (requiresExecutionContract || scenario.expectedWorkflow !== undefined) {
+      const expectedWorkflow = workflows.get(scenario.expectedWorkflow);
+      record(results, Boolean(expectedWorkflow), `scenario ${scenario.id} expectedWorkflow references generated workflow`);
+      record(results, executionProfiles.has(scenario.expectedProfile), `scenario ${scenario.id} expectedProfile is valid`);
+      record(results, verificationLevels.has(scenario.minimumVerificationLevel), `scenario ${scenario.id} minimumVerificationLevel is valid`);
+      record(results, Boolean(scenario.expectedRolePlan), `scenario ${scenario.id} has expectedRolePlan`);
+      const seenRoles = new Set();
+      for (const [mode, roles] of Object.entries((scenario.expectedRolePlan || {}))) {
+        record(results, ["active", "consulted", "notApplicable"].includes(mode), `scenario ${scenario.id} role mode is valid: ${mode}`);
+        record(results, Array.isArray(roles), `scenario ${scenario.id} ${mode} roles is an array`);
+        for (const role of roles || []) {
+          record(results, memberIds.has(role), `scenario ${scenario.id} ${mode} role exists: ${role}`);
+          record(results, !seenRoles.has(role), `scenario ${scenario.id} role has one expected mode: ${role}`);
+          seenRoles.add(role);
+          if (["active", "consulted"].includes(mode) && expectedWorkflow) {
+            record(
+              results,
+              (expectedWorkflow.candidateMembers || []).includes(role),
+              `scenario ${scenario.id} participating role is a candidate in expected workflow: ${role}`
+            );
+          }
+        }
+      }
+      record(results, acceptanceDoc.includes(scenario.expectedWorkflow || ""), `scenario ${scenario.id} expectedWorkflow is documented`);
+      record(results, acceptanceDoc.includes(scenario.expectedProfile || ""), `scenario ${scenario.id} expectedProfile is documented`);
+      record(results, acceptanceDoc.includes(scenario.minimumVerificationLevel || ""), `scenario ${scenario.id} minimum verification is documented`);
+    }
 
     for (const artifact of scenario.expectedOutputs || []) {
       const normalized = normalizeRelativePath(artifact);

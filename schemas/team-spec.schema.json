@@ -19,6 +19,10 @@
     "output"
   ],
   "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^2\\.[0-9]+\\.[0-9]+$"
+    },
     "skill": {
       "type": "object",
       "required": [
@@ -61,6 +65,171 @@
         "primaryValue": {
           "type": "string",
           "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "teamDesign": {
+      "type": "object",
+      "required": [
+        "problemStatement",
+        "mission",
+        "targetOutcomes",
+        "stakeholders",
+        "constraints",
+        "nonGoals",
+        "assumptions",
+        "valueMetrics"
+      ],
+      "properties": {
+        "problemStatement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetOutcomes": {
+          "$ref": "#/$defs/stringList"
+        },
+        "stakeholders": {
+          "$ref": "#/$defs/stringList"
+        },
+        "constraints": {
+          "$ref": "#/$defs/stringList"
+        },
+        "nonGoals": {
+          "$ref": "#/$defs/stringList"
+        },
+        "assumptions": {
+          "$ref": "#/$defs/stringList"
+        },
+        "valueMetrics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "baseline",
+              "target",
+              "evidenceSource",
+              "reviewCadence"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "baseline": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidenceSource": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reviewCadence": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "defaultComplexityLevel",
+        "defaultExecutionProfile",
+        "targetVerificationLevel",
+        "roleModes",
+        "reassessmentTriggers",
+        "requiredGates",
+        "humanReview"
+      ],
+      "properties": {
+        "defaultComplexityLevel": {
+          "type": "string",
+          "enum": [
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        },
+        "defaultExecutionProfile": {
+          "type": "string",
+          "enum": [
+            "lightweight",
+            "standard",
+            "assurance"
+          ]
+        },
+        "targetVerificationLevel": {
+          "type": "string",
+          "enum": [
+            "V0",
+            "V1",
+            "V2",
+            "V3",
+            "V4"
+          ]
+        },
+        "roleModes": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "active",
+              "consulted",
+              "not_applicable"
+            ]
+          }
+        },
+        "reassessmentTriggers": {
+          "$ref": "#/$defs/stringList"
+        },
+        "requiredGates": {
+          "$ref": "#/$defs/stringList"
+        },
+        "humanReview": {
+          "type": "object",
+          "required": [
+            "required",
+            "accountableRole",
+            "requiredWhen",
+            "blockedWithoutApproval"
+          ],
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "accountableRole": {
+              "type": "string"
+            },
+            "requiredWhen": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "blockedWithoutApproval": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -176,6 +345,30 @@
           },
           "doNotDo": {
             "$ref": "#/$defs/stringList"
+          },
+          "activation": {
+            "type": "object",
+            "required": [
+              "activeWhen",
+              "consultedWhen",
+              "notApplicableWhen",
+              "reassessWhen"
+            ],
+            "properties": {
+              "activeWhen": {
+                "$ref": "#/$defs/stringList"
+              },
+              "consultedWhen": {
+                "$ref": "#/$defs/stringList"
+              },
+              "notApplicableWhen": {
+                "$ref": "#/$defs/stringList"
+              },
+              "reassessWhen": {
+                "$ref": "#/$defs/stringList"
+              }
+            },
+            "additionalProperties": false
           },
           "externalSkills": {
             "$ref": "#/$defs/stringList"
@@ -427,6 +620,59 @@
           },
           "failureExamples": {
             "$ref": "#/$defs/stringList"
+          },
+          "expectedWorkflow": {
+            "$ref": "#/$defs/kebabId"
+          },
+          "expectedProfile": {
+            "type": "string",
+            "enum": [
+              "lightweight",
+              "standard",
+              "assurance"
+            ]
+          },
+          "minimumVerificationLevel": {
+            "type": "string",
+            "enum": [
+              "V0",
+              "V1",
+              "V2",
+              "V3",
+              "V4"
+            ]
+          },
+          "expectedRolePlan": {
+            "type": "object",
+            "required": [
+              "active",
+              "consulted",
+              "notApplicable"
+            ],
+            "properties": {
+              "active": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/kebabId"
+                },
+                "uniqueItems": true
+              },
+              "consulted": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/kebabId"
+                },
+                "uniqueItems": true
+              },
+              "notApplicable": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/kebabId"
+                },
+                "uniqueItems": true
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -658,6 +904,34 @@
           "items": {
             "type": "string"
           }
+        },
+        "humanReview": {
+          "type": "object",
+          "required": [
+            "required",
+            "accountableRole",
+            "requiredWhen",
+            "blockedWithoutApproval"
+          ],
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "accountableRole": {
+              "type": "string"
+            },
+            "requiredWhen": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "blockedWithoutApproval": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
