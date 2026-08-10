@@ -11,6 +11,13 @@ metadata:
 
 把任何可描述的问题转成标准团队 Skill：先建立问题、价值和治理契约，再由 Agent 语义组队并生成完整目录，用结构校验、评分和验收场景证明蓝图可执行。
 
+## 文件职责
+
+- `README.md`：默认中文用户文档，说明工具用途、使用方式和维护入口。
+- `README_EN.md`：与中文主文档对应的英文用户文档。
+- `SKILL.md`：Agent 执行入口，定义触发、路由、生成、安全和输出契约。
+- `skill-runtime.json`：面向安装器和通用 Agent 的机器可读运行时声明。
+
 ## 触发边界
 
 满足以下任一情况时使用本 Skill：
@@ -186,7 +193,7 @@ git status --short
 - 修改领域包时，同步更新 `domain-packs/`、`schemas/domain-pack.schema.json`、`scripts/validate-domain-packs.js` 和相关 spec。
 - 修改评分标准时，同步更新 `docs/team-scoring-rubric.md`、`scripts/score-team-spec.js`、`scripts/generate-team-skill.js` 和 fixture。
 - 修改已有 Skill 审计规则时，同步更新 `docs/skill-evolution-methodology.md`、`scripts/audit-skills.js`、`scripts/run-release-regression-tests.js` 和 README。
-- 修改运行环境、入口文件或必需打包文件时，同步更新 `skill-runtime.json`、`package.json` 和 README。
+- 修改运行环境、入口文件、必需打包文件或用户功能时，同步更新 `skill-runtime.json`、`package.json`、`README.md` 和 `README_EN.md`。
 - 结构或契约变化后运行 `npm test`。
 
 ## 仓库来源

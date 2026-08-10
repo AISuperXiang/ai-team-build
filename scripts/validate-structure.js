@@ -22,6 +22,7 @@ const requiredDirs = [
 const requiredFiles = [
   "SKILL.md",
   "README.md",
+  "README_EN.md",
   "package.json",
   "skill-runtime.json",
   "commands/README.md",
@@ -183,6 +184,7 @@ if (existsFile("package.json")) {
   record(packageJson && packageJson.engines && packageJson.engines.node === ">=18", "package.json declares node >=18");
   record(packageJson && packageJson.scripts && packageJson.scripts.test, "package.json has test script");
   record(packageJson && Array.isArray(packageJson.files) && packageJson.files.length > 0, "package.json declares publish files allowlist");
+  record(packageJson && Array.isArray(packageJson.files) && packageJson.files.includes("README_EN.md"), "package.json publishes README_EN.md");
 }
 
 if (existsFile("skill-runtime.json")) {

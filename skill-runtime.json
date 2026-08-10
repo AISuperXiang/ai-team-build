@@ -42,6 +42,7 @@
     "requiredFiles": [
       "SKILL.md",
       "README.md",
+      "README_EN.md",
       "package.json",
       "skill-runtime.json",
       "commands/",
