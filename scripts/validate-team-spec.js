@@ -126,6 +126,13 @@ function validateStringList(reporter, value, label) {
   }
 }
 
+function validateStringArray(reporter, value, label) {
+  reporter.record(Array.isArray(value), `${label} is array`);
+  for (const item of value || []) {
+    reporter.record(isNonEmptyString(item), `${label} entry is non-empty string`);
+  }
+}
+
 function validateContentMap(reporter, value, label, sectionNames) {
   if (value === undefined) return;
   reporter.record(isObject(value), `${label}.content is object`);
@@ -153,6 +160,21 @@ function validateSpec(spec, options = {}) {
       requireString(reporter, skill, field, "skill");
     }
     requireArray(reporter, skill, "targetUsers", "skill");
+  }
+
+  if (spec.readme !== undefined) {
+    const readme = requireObject(reporter, spec, "readme", "spec");
+    if (readme) {
+      const english = requireObject(reporter, readme, "english", "readme");
+      if (english) {
+        for (const field of ["name", "description", "domain", "primaryValue"]) {
+          requireString(reporter, english, field, "readme.english");
+        }
+        validateStringList(reporter, english.targetUsers, "readme.english.targetUsers");
+        validateStringArray(reporter, english.riskDisclaimers, "readme.english.riskDisclaimers");
+        validateStringArray(reporter, english.blockedClaims, "readme.english.blockedClaims");
+      }
+    }
   }
 
   if (spec.teamDesign !== undefined) {

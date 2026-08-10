@@ -6,5 +6,16 @@
     "version": "{{skill.version}}",
     "entry": "SKILL.md",
     "description": "{{skill.description}}"
+  },
+  "entrypoints": {
+    "skill": "SKILL.md",
+    "readme": "README.md"
+  },
+  "install": {
+    "requiredFiles": [
+      "SKILL.md",
+      "README.md",
+      "README_EN.md"
+    ]
   }
 }

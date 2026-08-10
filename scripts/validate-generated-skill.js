@@ -174,6 +174,7 @@ function main() {
   const requiredFiles = [
     "SKILL.md",
     "README.md",
+    "README_EN.md",
     "evaluation-report.md",
     "package.json",
     "skill-runtime.json",
@@ -230,6 +231,15 @@ function main() {
       record(hasValidFrontmatter(frontmatter) && frontmatter.name === runtime.skill.id, "SKILL.md name matches runtime skill id");
     }
     record(Boolean(hasValidFrontmatter(frontmatter) && frontmatter.description), "SKILL.md has description");
+  }
+
+  if (existsFile(root, "README.md") && existsFile(root, "README_EN.md")) {
+    const readme = read(root, "README.md");
+    const readmeEn = read(root, "README_EN.md");
+    record(readme.includes("[English](./README_EN.md)"), "README.md links to README_EN.md");
+    record(readmeEn.includes("[简体中文](./README.md)"), "README_EN.md links to README.md");
+    record(readme.includes("默认中文用户文档"), "README.md declares Simplified Chinese responsibility");
+    record(readmeEn.includes("English user documentation"), "README_EN.md declares English responsibility");
   }
 
   if (packageJson && runtime) {

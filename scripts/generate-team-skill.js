@@ -263,12 +263,37 @@ ${markdownList(spec.riskControls.evidenceRules)}
 - 新增命令时修改 \`commands/${commandFileName(spec.commands.prefix)}.md\`。
 - 角色适用场景变化时同步更新 \`docs/role-activation-methodology.md\`、状态模板和状态 Schema。
 - 执行档位、验证等级或必需门禁变化时同步更新运行方法论、状态 Schema 和验收场景。
+- 修改面向用户的功能、安装方式或命令示例时同步维护 \`README.md\` 与 \`README_EN.md\`。
 - 修改结构或契约后运行 \`npm test\`。
 `;
 }
 
+function resolveEnglishReadme(spec) {
+  const english = spec.readme && spec.readme.english;
+  const resolved = english || {
+    name: spec.skill.name,
+    description: spec.skill.description,
+    domain: spec.skill.domain,
+    primaryValue: spec.skill.primaryValue,
+    targetUsers: spec.skill.targetUsers,
+    riskDisclaimers: spec.riskControls.requiredDisclaimers,
+    blockedClaims: spec.riskControls.blockedClaims
+  };
+  return {
+    ...resolved,
+    riskDisclaimers: resolved.riskDisclaimers.length > 0
+      ? resolved.riskDisclaimers
+      : ["No domain-specific risk disclaimer is declared. Evidence and authorization boundaries still apply."],
+    blockedClaims: resolved.blockedClaims.length > 0
+      ? resolved.blockedClaims
+      : ["Do not make claims beyond the available evidence or authorization boundary."]
+  };
+}
+
 function renderGeneratedReadme(spec) {
   return `# ${spec.skill.name}
+
+**语言：简体中文 | [English](./README_EN.md)**
 
 \`${spec.skill.id}\` 是一个面向 Agent / IDE 的 ${spec.skill.domain} 专家团队 Skill。
 
@@ -292,6 +317,7 @@ ${spec.commands.items.map((command) => `${commandUsage(spec, command)} <输入>`
 ${spec.skill.id}/
 ├── SKILL.md
 ├── README.md
+├── README_EN.md
 ├── package.json
 ├── skill-runtime.json
 ├── evaluation-report.md
@@ -327,8 +353,81 @@ npm test
 
 ## 文档职责
 
-- \`README.md\` 面向人类用户，说明这个 Skill 是什么、如何使用和如何维护。
+- \`README.md\` 是默认中文用户文档，说明这个 Skill 是什么、如何使用和如何维护。
+- \`README_EN.md\` 是对应的英文用户文档。
 - \`SKILL.md\` 面向 Agent，定义触发、路由、加载顺序、执行协议和输出契约。
+`;
+}
+
+function renderGeneratedReadmeEn(spec) {
+  const english = resolveEnglishReadme(spec);
+  return `# ${english.name}
+
+**Language: [简体中文](./README.md) | English**
+
+> ${english.description}
+
+\`${spec.skill.id}\` is an expert-team Skill for Agent / IDE environments in ${english.domain}.
+
+Primary value: ${english.primaryValue}
+
+## Who Should Use It
+
+${markdownList(english.targetUsers)}
+
+## Common Commands
+
+\`\`\`text
+${spec.commands.items.map((command) => `${commandUsage(spec, command)} <input>`).join("\n")}
+\`\`\`
+
+See [commands/${commandFileName(spec.commands.prefix)}.md](commands/${commandFileName(spec.commands.prefix)}.md) for the complete command reference.
+
+## Project Structure
+
+\`\`\`text
+${spec.skill.id}/
+├── SKILL.md
+├── README.md
+├── README_EN.md
+├── package.json
+├── skill-runtime.json
+├── evaluation-report.md
+├── members/
+├── workflows/
+├── commands/
+├── docs/
+├── schemas/
+├── assets/templates/
+├── external-skills/
+├── external-cli/
+├── workspace/
+└── scripts/
+\`\`\`
+
+## Risk Boundaries
+
+${markdownList(english.riskDisclaimers)}
+
+Blocked claims:
+
+${markdownList(english.blockedClaims)}
+
+## Team Evaluation
+
+See [evaluation-report.md](evaluation-report.md) for the total score, grade, dimension evidence, gaps, and capability recommendations.
+
+## Validation
+
+\`\`\`bash
+npm test
+\`\`\`
+
+## Document Responsibilities
+
+- \`README.md\` is the default Simplified Chinese user documentation.
+- \`README_EN.md\` is the corresponding English user documentation.
+- \`SKILL.md\` is the Agent entrypoint for triggers, routing, loading order, execution, and output contracts.
 `;
 }
 
@@ -1285,6 +1384,7 @@ function renderGeneratedValidateStructureScript(spec) {
   const expectedFiles = [
     "SKILL.md",
     "README.md",
+    "README_EN.md",
     "evaluation-report.md",
     "package.json",
     "skill-runtime.json",
@@ -1433,8 +1533,12 @@ function collectFiles(dir, files = []) {
   return files;
 }
 const readme = read("README.md");
+const readmeEn = read("README_EN.md");
 const skill = read("SKILL.md");
-record(readme.includes("面向人类用户"), "README states human-facing responsibility");
+record(readme.includes("[English](./README_EN.md)"), "README links to README_EN.md");
+record(readmeEn.includes("[简体中文](./README.md)"), "README_EN links to README.md");
+record(readme.includes("默认中文用户文档"), "README states Simplified Chinese responsibility");
+record(readmeEn.includes("English user documentation"), "README_EN states English responsibility");
 record(skill.includes("Agent"), "SKILL states Agent-facing responsibility");
 const roleActivation = read("docs/role-activation-methodology.md");
 record(roleActivation.includes("rolePlan"), "role activation methodology defines rolePlan");
@@ -1643,6 +1747,7 @@ function renderRuntime(spec, commandFile) {
       requiredFiles: [
         "SKILL.md",
         "README.md",
+        "README_EN.md",
         "evaluation-report.md",
         "package.json",
         "skill-runtime.json",
@@ -1728,6 +1833,7 @@ function writeGeneratedSkill(spec, outputDir, options) {
 
   writeRelative("SKILL.md", renderGeneratedSkillMd(spec));
   writeRelative("README.md", renderGeneratedReadme(spec));
+  writeRelative("README_EN.md", renderGeneratedReadmeEn(spec));
   writeRelative("evaluation-report.md", renderScoreMarkdown(spec, score));
   writeRelativeJson("package.json", renderPackageJson(spec));
   writeRelativeJson("skill-runtime.json", renderRuntime(spec, commandFile));

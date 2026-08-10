@@ -6,6 +6,7 @@
 
 - `schemaVersion`：兼容式 v2 规格版本；新规格使用 `2.x.x`。
 - `skill`：新团队 Skill 的身份、领域、目标用户和核心价值。
+- `readme.english`：可选英文 README 元数据；正式双语发布时建议完整提供。
 - `teamDesign`：问题、使命、目标结果、利益相关方、约束、非目标、假设和价值指标。
 - `governance`：复杂度、执行档位、目标验证等级、角色模式、重评信号、必需门禁和人工复核。
 - `commands`：Slash 指令前缀和子命令。
@@ -37,6 +38,22 @@
 - `riskControls`：判断风险边界、禁止性承诺和证据规则。
 
 生成后会输出 `evaluation-report.md` 和 `generation-report.json.evaluation`。
+
+## 英文 README 字段
+
+所有新生成物都会包含默认中文 `README.md` 和英文 `README_EN.md`，两者必须互相链接。
+
+正式双语发布的规格建议提供完整的 `readme.english`：
+
+- `name`：英文团队名称。
+- `description`：英文简介。
+- `domain`：英文领域名称。
+- `primaryValue`：英文核心价值。
+- `targetUsers`：英文目标用户列表。
+- `riskDisclaimers`：英文风险声明，可为空数组。
+- `blockedClaims`：英文禁止性承诺，可为空数组。
+
+生成器保持离线和确定性，不调用在线翻译。旧规格未声明 `readme.english` 时仍可生成，英文 README 会复用源规格值；正式发布前应补齐英文元数据。
 
 ## ID 规则
 

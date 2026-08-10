@@ -104,6 +104,17 @@ function testQuotedFrontmatterGeneration() {
   const dir = tmpDir("quoted-frontmatter");
   const spec = readFixtureSpec();
   spec.skill.description = "A \"quoted\" description with colon: value";
+  spec.readme = {
+    english: {
+      name: "Stock Trading Research Team",
+      description: "Evidence-driven stock research and risk-control team.",
+      domain: "A-share market research",
+      primaryValue: "Turn market evidence into bounded research conclusions and risk-aware plans.",
+      targetUsers: ["Investors who need structured research workflows."],
+      riskDisclaimers: ["Research output is informational and not investment advice."],
+      blockedClaims: ["Do not promise returns or issue deterministic trading instructions."]
+    }
+  };
   const specPath = path.join(dir, "spec.json");
   const outputDir = path.join(dir, spec.skill.id);
   writeJson(specPath, spec);
@@ -111,6 +122,15 @@ function testQuotedFrontmatterGeneration() {
   assert(generate.status === 0, "generator accepts quoted description", generate.stdout + generate.stderr);
   const skillMd = fs.readFileSync(path.join(outputDir, "SKILL.md"), "utf8");
   assert(!skillMd.includes("description: \"A \"quoted\""), "generated SKILL.md escapes quoted frontmatter");
+  const readme = fs.readFileSync(path.join(outputDir, "README.md"), "utf8");
+  const readmeEn = fs.readFileSync(path.join(outputDir, "README_EN.md"), "utf8");
+  assert(readme.includes("[English](./README_EN.md)"), "generated README links to README_EN");
+  assert(readmeEn.includes("[简体中文](./README.md)"), "generated README_EN links to README");
+  assert(readmeEn.includes("Evidence-driven stock research"), "generated README_EN uses declared English metadata");
+  const runtime = JSON.parse(fs.readFileSync(path.join(outputDir, "skill-runtime.json"), "utf8"));
+  assert(runtime.install.requiredFiles.includes("README_EN.md"), "generated runtime requires README_EN.md");
+  const generationReport = JSON.parse(fs.readFileSync(path.join(outputDir, "generation-report.json"), "utf8"));
+  assert(generationReport.plannedFiles.includes("README_EN.md"), "generation report plans README_EN.md");
   const validate = runNode(["scripts/validate-generated-skill.js", outputDir]);
   assert(validate.status === 0, "generated validator accepts escaped frontmatter", validate.stdout + validate.stderr);
   const generatedContracts = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });

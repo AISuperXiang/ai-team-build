@@ -4,7 +4,8 @@
 
 ## structure-gate
 
-- 根文件存在：`SKILL.md`、`README.md`、`package.json`、`skill-runtime.json`。
+- 根文件存在：`SKILL.md`、`README.md`、`README_EN.md`、`package.json`、`skill-runtime.json`。
+- `README.md` 与 `README_EN.md` 必须提供双向语言链接，并分别声明默认中文和英文文档职责。
 - 标准目录存在：`members/`、`workflows/`、`commands/`、`docs/`、`schemas/`、`assets/templates/`、`scripts/`、`external-skills/`、`external-cli/`、`workspace/`。
 - `skill-runtime.json.install.requiredFiles` 中的路径均存在。
 

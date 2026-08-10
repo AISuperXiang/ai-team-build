@@ -7,6 +7,7 @@ const TEXT_EXTENSIONS = new Set([".md", ".json", ".js"]);
 const REQUIRED_GENERATED_FILES = [
   "SKILL.md",
   "README.md",
+  "README_EN.md",
   "evaluation-report.md",
   "generation-report.json",
   "docs/acceptance-scenarios.md",

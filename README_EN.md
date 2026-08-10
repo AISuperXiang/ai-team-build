@@ -204,6 +204,7 @@ Audit
 Every generation task starts with `team-spec.json`. A compatible v2 specification should include:
 
 - `schemaVersion`: Specification version.
+- `readme.english`: Optional English README metadata; provide it completely for formal bilingual releases.
 - `teamDesign`: Problem statement, mission, target outcomes, stakeholders, constraints, assumptions, and value metrics.
 - `governance`: Complexity, execution profile, evidence rules, human accountability, and risk boundaries.
 - `members[].activation`: Activation, exclusion, and reassessment signals for each role.
@@ -259,6 +260,7 @@ Core structure:
 <new-skill-id>/
 ├── SKILL.md
 ├── README.md
+├── README_EN.md
 ├── package.json
 ├── skill-runtime.json
 ├── evaluation-report.md
@@ -277,7 +279,8 @@ Core structure:
 
 | File or directory | Responsibility |
 | --- | --- |
-| `README.md` | User documentation for purpose, usage, and maintenance |
+| `README.md` | Default Simplified Chinese user documentation with a link to English |
+| `README_EN.md` | Corresponding English user documentation with a link back to Chinese |
 | `SKILL.md` | Agent entrypoint for triggers, routing, loading order, execution, and outputs |
 | `members/` | Candidate roles, responsibilities, activation rules, and quality gates |
 | `workflows/` | Workflows, stages, outputs, gates, and routing |
@@ -306,6 +309,7 @@ Core structure:
 - High-risk domains require disclaimers, blocked claims, evidence rules, confidence, and invalidation conditions.
 - High-risk domains require a human owner and must block delivery or irreversible action without approval.
 - Generated output must pass structure validation, contract validation, scoring, and acceptance scenarios.
+- Generated output must include mutually linked `README.md` and `README_EN.md`; generation remains offline and never calls online translation.
 - Every candidate member must appear in `rolePlan`; only participating roles are loaded, and N/A decisions retain evidence.
 - An A grade certifies blueprint and contract quality, not real domain capability or outcomes.
 

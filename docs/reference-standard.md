@@ -4,7 +4,8 @@
 
 ## 根文件
 
-- `README.md`：面向人类用户，说明团队价值、使用方式、安装方式、目录结构和维护方式。
+- `README.md`：默认中文用户文档，说明团队价值、使用方式、安装方式、目录结构和维护方式，并链接 `README_EN.md`。
+- `README_EN.md`：对应英文用户文档，必须链接回 `README.md`。
 - `SKILL.md`：面向 Agent，定义触发边界、路由规则、最小加载矩阵、执行循环、风险约束和最终输出契约。
 - `skill-runtime.json`：面向安装器和通用 Agent，声明入口、运行环境、requiredFiles、安装方式和 agentHints。
 - `package.json`：声明 Node 版本、验证脚本和生成物自身的 `npm test`。
@@ -91,6 +92,7 @@
 生成物必须通过：
 
 - 根文件存在。
+- `README.md` 与 `README_EN.md` 双向链接，且分别声明中文默认文档和英文文档职责。
 - requiredFiles 存在。
 - workflow 引用的 member 存在。
 - workflow 候选成员、阶段 owner 和质量门禁引用一致。

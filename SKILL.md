@@ -72,7 +72,7 @@ metadata:
 1. **Intake**：确认问题、利益相关方、目标结果、价值指标、约束、非目标、假设和高风险领域。
 2. **Benchmark**：读取 `docs/reference-standard.md`，按团队 Skill 标准结构确定必须生成的目录、入口和校验项。
 3. **Spec**：Agent 根据问题价值链完成语义组队，形成 `teamDesign`、候选角色池、角色激活条件和 `governance`；`domain-packs/` 只作为领域增强层，脚本负责确定性合成、生成和校验。
-4. **Review**：检查角色、命令、工作流、执行档位、验证等级、人工责任、docs、assets、domainKnowledge、capabilityMatrix、acceptanceScenarios、dataContracts、Capability Adapter、scripts、external skills 和风险控制是否覆盖目标。
+4. **Review**：检查角色、命令、工作流、执行档位、验证等级、人工责任、双语 README、docs、assets、domainKnowledge、capabilityMatrix、acceptanceScenarios、dataContracts、Capability Adapter、scripts、external skills 和风险控制是否覆盖目标。
 5. **Generate**：调用 `node scripts/generate-team-skill.js --spec <path> --output <dir>` 物化目录。
 6. **Validate**：调用 `node scripts/validate-generated-skill.js <dir>` 校验生成结果。
 7. **Acceptance**：调用 `node <generated>/scripts/run-acceptance-scenarios.js <generated>` 校验 golden 场景。
@@ -118,8 +118,8 @@ npm pack --dry-run --json
 - A 级 v2 蓝图还必须包含完整问题价值契约、治理模型、角色激活条件和结构化验收执行期望。
 - 如果声明 external skills，A 级团队必须包含 `externalSkills.adapters`，记录输入、输出、授权、降级和验证命令。
 - `docs.*[].content` 和 `templates[].content` 应覆盖每个章节，不得保留空 bullet 或“待执行时补齐”占位。
-- 生成物必须包含 `README.md`、`SKILL.md`、`package.json`、`skill-runtime.json`、`commands/`、`docs/`、`schemas/`、`assets/templates/`、`scripts/`、`members/`、`workflows/`、`workspace/`、`external-skills/`、`external-cli/`。
-- README 面向人类用户；SKILL 面向 Agent 执行；不得混用职责。
+- 生成物必须包含 `README.md`、`README_EN.md`、`SKILL.md`、`package.json`、`skill-runtime.json`、`commands/`、`docs/`、`schemas/`、`assets/templates/`、`scripts/`、`members/`、`workflows/`、`workspace/`、`external-skills/`、`external-cli/`。
+- `README.md` 为默认中文用户文档，`README_EN.md` 为对应英文用户文档且两者互链；SKILL 面向 Agent 执行，不得混用职责。
 
 ## 生成安全规则
 

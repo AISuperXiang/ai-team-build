@@ -69,6 +69,55 @@
       },
       "additionalProperties": false
     },
+    "readme": {
+      "type": "object",
+      "required": [
+        "english"
+      ],
+      "properties": {
+        "english": {
+          "type": "object",
+          "required": [
+            "name",
+            "description",
+            "domain",
+            "primaryValue",
+            "targetUsers",
+            "riskDisclaimers",
+            "blockedClaims"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            },
+            "domain": {
+              "type": "string",
+              "minLength": 1
+            },
+            "primaryValue": {
+              "type": "string",
+              "minLength": 1
+            },
+            "targetUsers": {
+              "$ref": "#/$defs/stringList"
+            },
+            "riskDisclaimers": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "blockedClaims": {
+              "$ref": "#/$defs/stringArray"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "teamDesign": {
       "type": "object",
       "required": [
@@ -968,6 +1017,13 @@
     "stringList": {
       "type": "array",
       "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "stringArray": {
+      "type": "array",
       "items": {
         "type": "string",
         "minLength": 1

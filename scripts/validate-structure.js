@@ -62,6 +62,7 @@ const requiredFiles = [
 const templateFiles = [
   "assets/templates/generated-SKILL.md.tpl",
   "assets/templates/generated-README.md.tpl",
+  "assets/templates/generated-README_EN.md.tpl",
   "assets/templates/generated-package.json.tpl",
   "assets/templates/generated-skill-runtime.json.tpl",
   "assets/templates/member.md.tpl",

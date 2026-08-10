@@ -56,6 +56,7 @@ function plannedFilesForSpec(spec) {
   return [...new Set([
     "SKILL.md",
     "README.md",
+    "README_EN.md",
     "evaluation-report.md",
     "package.json",
     "skill-runtime.json",

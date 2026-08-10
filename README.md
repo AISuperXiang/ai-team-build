@@ -204,6 +204,7 @@ Audit
 所有生成任务必须先形成 `team-spec.json`。推荐使用兼容式 v2 规格，至少包含：
 
 - `schemaVersion`：规格版本。
+- `readme.english`：可选英文 README 元数据；正式双语发布时建议完整提供。
 - `teamDesign`：问题陈述、使命、目标结果、利益相关方、约束、假设和价值指标。
 - `governance`：复杂度、执行档位、证据规则、人工责任和风险边界。
 - `members[].activation`：角色激活条件、不适用条件和重评信号。
@@ -259,6 +260,7 @@ Audit
 <new-skill-id>/
 ├── SKILL.md
 ├── README.md
+├── README_EN.md
 ├── package.json
 ├── skill-runtime.json
 ├── evaluation-report.md
@@ -277,7 +279,8 @@ Audit
 
 | 文件或目录 | 职责 |
 | --- | --- |
-| `README.md` | 面向用户，说明团队 Skill 的用途、使用方式和维护入口 |
+| `README.md` | 默认中文用户文档，并链接英文版 |
+| `README_EN.md` | 对应英文用户文档，并链接回中文版 |
 | `SKILL.md` | 面向 Agent，定义触发、路由、加载顺序、执行协议和输出契约 |
 | `members/` | 候选角色、职责、激活条件和质量门禁 |
 | `workflows/` | 标准工作流、阶段、产物、门禁和路由表 |
@@ -306,6 +309,7 @@ Audit
 - 高风险领域必须包含免责声明、禁止性承诺、证据规则、置信度和失效条件。
 - 高风险领域必须指定人工责任人，并在无批准时阻断交付或不可逆操作。
 - 生成物必须通过结构校验、契约校验、评分和验收场景。
+- 生成物必须同时包含互相链接的 `README.md` 与 `README_EN.md`；生成器保持离线，不调用在线翻译。
 - 每个候选成员都必须进入 `rolePlan`，仅加载实际参与角色，并为 N/A 保留依据。
 - A 级代表蓝图和契约质量，不代表真实业务能力或结果已经验证。
 

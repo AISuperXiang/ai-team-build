@@ -103,6 +103,13 @@ docs 和 templates 不能只生成章节标题，必须为每个关键章节补�
 
 生成器会为所有团队保底生成 `decision-log.md`、`risk-register.md`、`role-handoff.md`、`evidence-index.md`、`delivery-summary.md` 和 `workflow-status.json`。规格声明同路径模板时使用领域版本。
 
+### 双语 README
+
+- 每个生成团队必须同时包含默认中文 `README.md` 和英文 `README_EN.md`，并提供双向语言链接。
+- 正式双语发布时，在规格中提供完整 `readme.english`，覆盖英文名称、简介、领域、核心价值、目标用户和风险边界。
+- 生成器不得调用在线翻译；未提供 `readme.english` 时复用源规格值，保持离线、确定性和旧规格兼容。
+- `skill-runtime.json.install.requiredFiles`、生成计划、结构校验和验收场景必须把 `README_EN.md` 视为必需文件。
+
 ## 8. 推导领域知识包与验收场景
 
 高质量团队必须补齐以下工厂字段：
