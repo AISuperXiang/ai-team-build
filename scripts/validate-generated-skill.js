@@ -2,6 +2,10 @@
 
 const fs = require("fs");
 const path = require("path");
+const {
+  isValidRequiredCommandField,
+  REQUIRED_COMMAND_FIELDS
+} = require("./command-contract");
 
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage", ".tmp"]);
 const TEXT_EXTENSIONS = new Set([".md", ".json", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx"]);
@@ -369,6 +373,28 @@ function main() {
     record(existsFile(root, report.commandFile), `reported command file exists: ${report.commandFile}`);
     if (existsFile(root, report.commandFile)) {
       const commandContent = read(root, report.commandFile);
+      const command = parseFrontmatter(commandContent);
+      record(
+        hasValidFrontmatter(command),
+        command && command.__parseError
+          ? `${report.commandFile} has valid frontmatter (${command.__parseError})`
+          : `${report.commandFile} has frontmatter`
+      );
+      for (const field of REQUIRED_COMMAND_FIELDS) {
+        record(
+          isValidRequiredCommandField(field, hasValidFrontmatter(command) && command[field]),
+          `${report.commandFile} has required route field: ${field}`
+        );
+      }
+      if (hasValidFrontmatter(command) && Object.prototype.hasOwnProperty.call(command, "members")) {
+        record(
+          Array.isArray(command.members) && command.members.length > 0,
+          `${report.commandFile} deprecated members is a non-empty array`
+        );
+        for (const member of Array.isArray(command.members) ? command.members : []) {
+          record(memberIds.has(member), `${report.commandFile} deprecated members references existing member: ${member}`);
+        }
+      }
       for (const workflowId of workflowIds) {
         record(commandContent.includes(workflowId), `${report.commandFile} references workflow id: ${workflowId}`);
       }
@@ -403,6 +429,20 @@ function main() {
   ]) {
     const schema = existsFile(root, schemaFile) ? parseJson(root, schemaFile) : null;
     record(schemaIsDeep(schema), `${schemaFile} has required fields and properties`);
+    if (schemaFile === "schemas/command.schema.json") {
+      record(
+        REQUIRED_COMMAND_FIELDS.every((field) => Array.isArray(schema && schema.required) && schema.required.includes(field)),
+        "command schema requires route fields"
+      );
+      record(
+        Array.isArray(schema && schema.required) && !schema.required.includes("members"),
+        "command schema does not require deprecated members"
+      );
+      record(
+        Boolean(schema && schema.properties && schema.properties.members && schema.properties.members.deprecated === true),
+        "command schema marks members as deprecated"
+      );
+    }
     if (schemaFile === "schemas/status.schema.json") {
       const rolePlan = schema && schema.properties && schema.properties.rolePlan;
       record(Array.isArray(schema && schema.required) && schema.required.includes("rolePlan"), "status schema requires rolePlan");

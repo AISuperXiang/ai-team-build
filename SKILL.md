@@ -2,7 +2,7 @@
 name: "ai-team-build"
 description: "AI Team Skill generator and evolution auditor. Use when users invoke /team-build or ask to create, build, customize, review, validate, package, batch-audit, or upgrade an agent team Skill from a team goal, team-spec JSON, or existing Skill path."
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # AI Team Build
@@ -47,6 +47,7 @@ metadata:
 | `/team-build review <spec>` | `validate spec -> score spec -> report blockers` | `npm run validate:spec -- <spec>` + `npm run score -- <spec>` |
 | `/team-build validate <skill-path>` | `validate structure -> validate contracts -> acceptance` | 目标 Skill 自带 `npm test` 或等价脚本 |
 | `/team-build elevate <skill-path...>` | `static audit -> prioritize -> targeted upgrade -> target verification -> re-audit` | `audit:skills`；目标 Skill 验证命令需用户/执行环境确认 |
+| 安装后验证 | `structure -> domain packs -> fixture spec -> generation dry-run` | `npm run verify:install`，不得写入 Skill 目录 |
 | 发布前审查 | `npm test -> npm pack --dry-run --json -> sensitive scan -> git status` | 必须输出命令证据 |
 
 ## 最小加载矩阵
@@ -95,11 +96,14 @@ npm run validate:generated -- <skills-root>/<skill-id>
 node <skills-root>/<skill-id>/scripts/run-acceptance-scenarios.js <skills-root>/<skill-id>
 npm run audit:skills -- <skill-path>
 npm run audit:skills -- --root <skills-root> --output-dir .tmp/skill-audits
+npm run verify:install
 npm test
 npm pack --dry-run --json
 ```
 
 优先使用 `--dry-run` 查看生成计划。只有用户明确要求覆盖，且目标目录确认为本工具生成目录时，才允许使用 `--overwrite`。
+
+`verify:install` 是只读安装验证，不得调用 `--overwrite` 或在 Skill 目录物化生成物。`npm test` 是开发、CI 和发布前的完整验证；需要生成目录的测试必须使用系统临时目录并在成功或失败后清理。
 
 `audit:skills` 默认只做静态分析，不执行目标 Skill 的测试、网络调用或其他脚本。报告中的验证命令需要由 Agent 在目标仓库、权限和副作用边界确认后运行。
 
@@ -112,6 +116,8 @@ npm pack --dry-run --json
 - 工作流成员是候选角色池；生成物必须有 `rolePlan`、角色参与模式、不适用依据和重评规则。
 - 阶段 owner 必须来自当前工作流候选角色池；`consulted` 或 `not_applicable` 候选角色不需要伪造静态阶段。
 - 工作流声明的每个质量门禁必须出现在阶段 gates 中。
+- command 只负责触发和 workflow 路由，必需字段为 `id`、`title`、`triggers`、`execution_mode`。
+- 新 command 不声明 `members`；旧 command 的 `members` 仅作为可选兼容字段，存在时必须引用已声明成员。
 - 命令引用的工作流必须存在。
 - 每个工作流至少有阶段、产物和门禁。
 - A 级团队必须包含 `domainKnowledge`、`capabilityMatrix`、`acceptanceScenarios` 和 `dataContracts`。
@@ -194,6 +200,8 @@ git status --short
 - 修改评分标准时，同步更新 `docs/team-scoring-rubric.md`、`scripts/score-team-spec.js`、`scripts/generate-team-skill.js` 和 fixture。
 - 修改已有 Skill 审计规则时，同步更新 `docs/skill-evolution-methodology.md`、`scripts/audit-skills.js`、`scripts/run-release-regression-tests.js` 和 README。
 - 修改运行环境、入口文件、必需打包文件或用户功能时，同步更新 `skill-runtime.json`、`package.json`、`README.md` 和 `README_EN.md`。
+- 修改 command 契约时，同步更新 `scripts/command-contract.js`、`commands/team-build.md`、`assets/templates/command.md.tpl`、生成器、内外校验器和发布回归。
+- 修改安装验证时，必须保持 `verify:install` 只读，并保持 `npm test` 的完整生成、验收和发布回归职责。
 - 结构或契约变化后运行 `npm test`。
 
 ## 仓库来源

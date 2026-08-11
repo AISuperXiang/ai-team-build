@@ -78,6 +78,12 @@ It is usually unnecessary when:
 ```bash
 git clone https://github.com/AISuperXiang/ai-team-build.git
 cd ai-team-build
+npm run verify:install
+```
+
+This command only validates structure, domain packs, the fixture specification, and a generation dry-run. It does not write into the Skill directory. Development, CI, and release checks still run the complete suite:
+
+```bash
 npm test
 ```
 
@@ -198,6 +204,15 @@ Audit
 3. **Upgrade**: Apply the smallest change consistent with the target Skill's responsibility boundary.
 4. **Verify**: Run declared target checks after confirming permissions and side effects.
 5. **Re-audit**: Measure score changes and record residual risks and uncovered scope.
+
+### Architecture and Verification Layers
+
+- `team-spec.json` is the intermediate representation between natural-language semantic design and deterministic generation.
+- A command only owns triggers and workflow routing. Workflow `members` define candidate roles, while runtime `rolePlan` selects actual participants.
+- Newly generated commands do not declare `members`; the legacy field is accepted only for compatibility and must reference valid members.
+- `npm run verify:install` is the read-only installation check; `npm test` owns complete generation, acceptance, and release regression.
+- Tests that materialize generated Skills run in an isolated system temporary directory and clean it after success or failure.
+- See [`AGENTS.md`](./AGENTS.md) and [`docs/reference-standard.md`](./docs/reference-standard.md) for the complete engineering rules.
 
 ## Specification and Governance
 
@@ -340,6 +355,7 @@ Investment-research examples are for research and education only. They are not i
 
 ```text
 ai-team-build/
+├── AGENTS.md
 ├── SKILL.md
 ├── README.md
 ├── README_EN.md
@@ -364,10 +380,17 @@ Common maintenance entrypoints:
 - Change generated structure: update `docs/reference-standard.md`, `assets/templates/`, `scripts/generate-team-skill.js`, `scripts/generation-plan.js`, `scripts/template-engine.js`, and `scripts/validate-generated-skill.js`.
 - Change domain packs: update `domain-packs/`, `schemas/domain-pack.schema.json`, `scripts/validate-domain-packs.js`, and related example specs.
 - Change commands: update [`commands/team-build.md`](./commands/team-build.md).
+- Change the command contract: update `scripts/command-contract.js`, the command template, generator, internal and external validators, and release regressions.
 - Change audit rules: update `docs/skill-evolution-methodology.md`, `scripts/audit-skills.js`, and `scripts/run-release-regression-tests.js`.
 - Change runtime requirements, entrypoints, installation, or user-facing functionality: update `skill-runtime.json`, `package.json`, and both README files.
 
-Run after structural or contract changes:
+Run the read-only check after installation:
+
+```bash
+npm run verify:install
+```
+
+Run the complete suite after structural, contract, or release changes:
 
 ```bash
 npm test
@@ -386,6 +409,7 @@ git status --short
 - [`README_EN.md`](./README_EN.md): English user documentation.
 - [`SKILL.md`](./SKILL.md): Agent execution entrypoint.
 - [`skill-runtime.json`](./skill-runtime.json): Machine-readable runtime declaration for installers and generic Agents.
+- [`AGENTS.md`](./AGENTS.md): Architecture boundaries, synchronization matrix, and validation rules for maintenance Agents.
 
 ## Repository
 

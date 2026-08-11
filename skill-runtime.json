@@ -4,7 +4,7 @@
   "skill": {
     "id": "ai-team-build",
     "name": "AI Team Build Skill",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "entry": "SKILL.md",
     "description": "Builds complete agent-readable AI team skills from a team specification."
   },
@@ -37,10 +37,11 @@
       "generic-agent"
     ],
     "postInstall": [
-      "npm test"
+      "npm run verify:install"
     ],
     "requiredFiles": [
       "SKILL.md",
+      "AGENTS.md",
       "README.md",
       "README_EN.md",
       "package.json",
@@ -59,22 +60,22 @@
         "id": "git-clone",
         "label": "Git clone",
         "command": "git clone https://github.com/AISuperXiang/ai-team-build.git ai-team-build",
-        "verify": "cd ai-team-build && npm test"
+        "verify": "cd ai-team-build && npm run verify:install"
       },
       {
         "id": "current-directory",
         "label": "Use this repository directory",
-        "command": "npm test",
-        "verify": "npm test"
+        "command": "npm run verify:install",
+        "verify": "npm run verify:install"
       },
       {
         "id": "manual-copy",
         "label": "Manual directory copy",
         "instructions": [
           "Copy this repository directory into your agent skills root using your platform's file manager or deployment tool.",
-          "Run npm test from the copied directory before registering the skill."
+          "Run npm run verify:install from the copied directory before registering the skill."
         ],
-        "verify": "npm test"
+        "verify": "npm run verify:install"
       }
     ]
   },

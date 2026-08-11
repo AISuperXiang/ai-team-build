@@ -18,6 +18,9 @@
 ## command-workflow-gate
 
 - 主命令文件存在。
+- command frontmatter 必须包含 `id`、`title`、`triggers`、`execution_mode`。
+- 新生成 command 不声明 `members`；角色候选池由 workflow `members` 和运行期 `rolePlan` 唯一表达。
+- 兼容旧 command 时，`members` 为可选弃用字段；一旦声明，必须是非空数组且全部引用已声明成员。
 - 命令引用的 workflow 存在。
 - `workflows/route-table.md` 覆盖所有 workflow。
 

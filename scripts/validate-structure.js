@@ -2,8 +2,13 @@
 
 const fs = require("fs");
 const path = require("path");
+const {
+  isValidRequiredCommandField,
+  REQUIRED_COMMAND_FIELDS
+} = require("./command-contract");
 
 const ROOT = path.resolve(__dirname, "..");
+const INSTALL_VERIFY_COMMAND = "npm run verify:install";
 
 const requiredDirs = [
   "commands",
@@ -21,6 +26,7 @@ const requiredDirs = [
 
 const requiredFiles = [
   "SKILL.md",
+  "AGENTS.md",
   "README.md",
   "README_EN.md",
   "package.json",
@@ -39,11 +45,13 @@ const requiredFiles = [
   "schemas/generated-skill.schema.json",
   "schemas/domain-pack.schema.json",
   "scripts/template-utils.js",
+  "scripts/command-contract.js",
   "scripts/template-engine.js",
   "scripts/generation-plan.js",
   "scripts/generate-team-skill.js",
   "scripts/synthesize-team-spec.js",
   "scripts/run-acceptance-scenarios.js",
+  "scripts/run-generated-fixture-test.js",
   "scripts/audit-skills.js",
   "scripts/score-team-spec.js",
   "scripts/validate-structure.js",
@@ -148,12 +156,23 @@ function parseFrontmatter(content) {
   const match = content.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
   const data = {};
+  let currentKey = null;
   for (const line of match[1].split(/\r?\n/)) {
-    const lineMatch = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (!lineMatch) continue;
-    const parsed = parseYamlScalar(lineMatch[2]);
-    if (!parsed.ok) return { __parseError: `${lineMatch[1]}: ${parsed.error}` };
-    data[lineMatch[1]] = parsed.value;
+    const keyMatch = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (keyMatch) {
+      const [, key, rawValue] = keyMatch;
+      const parsed = parseYamlScalar(rawValue);
+      if (!parsed.ok) return { __parseError: `${key}: ${parsed.error}` };
+      currentKey = key;
+      data[key] = parsed.value;
+      continue;
+    }
+    const arrayMatch = line.match(/^\s+-\s+(.+)$/);
+    if (arrayMatch && currentKey && Array.isArray(data[currentKey])) {
+      const parsed = parseYamlScalar(arrayMatch[1]);
+      if (!parsed.ok) return { __parseError: `${currentKey}: ${parsed.error}` };
+      data[currentKey].push(parsed.value);
+    }
   }
   return data;
 }
@@ -177,6 +196,38 @@ if (existsFile("SKILL.md")) {
   record(Boolean(hasValidFrontmatter(frontmatter) && frontmatter.description && frontmatter.description.includes("/team-build")), "SKILL.md description includes trigger");
 }
 
+if (existsFile("commands/team-build.md")) {
+  const command = parseFrontmatter(read("commands/team-build.md"));
+  record(hasValidFrontmatter(command), "commands/team-build.md has valid frontmatter");
+  for (const field of REQUIRED_COMMAND_FIELDS) {
+    const value = hasValidFrontmatter(command) && command[field];
+    record(
+      isValidRequiredCommandField(field, value),
+      `commands/team-build.md has required route field: ${field}`
+    );
+  }
+  record(
+    hasValidFrontmatter(command) && !Object.prototype.hasOwnProperty.call(command, "members"),
+    "commands/team-build.md does not declare command-level members"
+  );
+}
+
+if (existsFile("assets/templates/command.md.tpl")) {
+  const template = parseFrontmatter(read("assets/templates/command.md.tpl"));
+  record(hasValidFrontmatter(template), "command.md.tpl has valid frontmatter");
+  for (const field of REQUIRED_COMMAND_FIELDS) {
+    const value = hasValidFrontmatter(template) && template[field];
+    record(
+      isValidRequiredCommandField(field, value),
+      `command.md.tpl has required route field: ${field}`
+    );
+  }
+  record(
+    hasValidFrontmatter(template) && !Object.prototype.hasOwnProperty.call(template, "members"),
+    "command.md.tpl does not declare command-level members"
+  );
+}
+
 if (existsFile("package.json")) {
   const packageJson = parseJson("package.json");
   record(packageJson && packageJson.name === "ai-team-build", "package.json name is ai-team-build");
@@ -184,7 +235,33 @@ if (existsFile("package.json")) {
   record(packageJson && packageJson.license === "MIT", "package.json license matches LICENSE");
   record(packageJson && packageJson.engines && packageJson.engines.node === ">=18", "package.json declares node >=18");
   record(packageJson && packageJson.scripts && packageJson.scripts.test, "package.json has test script");
+  record(Boolean(packageJson && packageJson.scripts && packageJson.scripts["verify:install"]), "package.json has verify:install script");
+  record(
+    Boolean(packageJson && packageJson.scripts && packageJson.scripts["verify:install"] && packageJson.scripts["verify:install"].includes("--dry-run")),
+    "verify:install includes a dry-run generation smoke test"
+  );
+  record(
+    Boolean(packageJson && packageJson.scripts && !packageJson.scripts["verify:install"].includes("--overwrite")),
+    "verify:install does not allow generated output overwrite"
+  );
+  record(
+    Boolean(packageJson && packageJson.scripts &&
+      !packageJson.scripts["verify:install"].includes("npm test") &&
+      !packageJson.scripts["verify:install"].includes("test:fixture") &&
+      !packageJson.scripts["verify:install"].includes("test:venture") &&
+      !packageJson.scripts["verify:install"].includes("test:regression")),
+    "verify:install does not invoke complete or materializing test suites"
+  );
+  record(
+    Boolean(packageJson && packageJson.scripts && packageJson.scripts["test:fixture"] && packageJson.scripts["test:fixture"].includes("run-generated-fixture-test.js")),
+    "test:fixture uses the system temporary directory runner"
+  );
+  record(
+    Boolean(packageJson && packageJson.scripts && packageJson.scripts["test:venture"] && packageJson.scripts["test:venture"].includes("run-generated-fixture-test.js")),
+    "test:venture uses the system temporary directory runner"
+  );
   record(packageJson && Array.isArray(packageJson.files) && packageJson.files.length > 0, "package.json declares publish files allowlist");
+  record(packageJson && Array.isArray(packageJson.files) && packageJson.files.includes("AGENTS.md"), "package.json publishes AGENTS.md");
   record(packageJson && Array.isArray(packageJson.files) && packageJson.files.includes("README_EN.md"), "package.json publishes README_EN.md");
 }
 
@@ -200,6 +277,19 @@ if (existsFile("skill-runtime.json")) {
   record(Boolean(runtime && runtime.agentHints && runtime.agentHints.executionPolicy), "runtime defines execution policy");
   record(Boolean(runtime && runtime.agentHints && runtime.agentHints.roleActivationPolicy), "runtime defines role activation policy");
   record(Boolean(runtime && runtime.agentHints && runtime.agentHints.verificationPolicy), "runtime defines verification boundary");
+  record(
+    runtime && runtime.install && Array.isArray(runtime.install.postInstall) &&
+      runtime.install.postInstall.length === 1 && runtime.install.postInstall[0] === INSTALL_VERIFY_COMMAND,
+    "runtime postInstall uses verify:install"
+  );
+  if (runtime && runtime.install && Array.isArray(runtime.install.methods)) {
+    for (const method of runtime.install.methods) {
+      record(
+        typeof method.verify === "string" && method.verify.endsWith(INSTALL_VERIFY_COMMAND),
+        `runtime install method uses verify:install: ${method.id || "unknown"}`
+      );
+    }
+  }
   const runtimeText = JSON.stringify(runtime);
   const localPathPlaceholder = ["/path", "to"].join("/");
   const platformCopyCommand = ["cp", "-R"].join(" ");

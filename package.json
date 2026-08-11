@@ -1,6 +1,6 @@
 {
   "name": "ai-team-build",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Universal AI team skill factory that turns described problems into governed, verifiable agent teams.",
   "repository": {
     "type": "git",
@@ -17,6 +17,7 @@
     "schemas/",
     "scripts/",
     "LICENSE",
+    "AGENTS.md",
     "README.md",
     "README_EN.md",
     "SKILL.md",
@@ -36,9 +37,10 @@
     "validate:generated": "node scripts/validate-generated-skill.js",
     "validate:domain-packs": "node scripts/validate-domain-packs.js",
     "acceptance": "node scripts/run-acceptance-scenarios.js",
+    "verify:install": "npm run validate:structure && npm run validate:domain-packs && npm run validate:spec -- fixtures/stock-trading-team.team-spec.json && npm run generate -- --spec fixtures/stock-trading-team.team-spec.json --output .tmp/install-smoke/stock-trading-team --dry-run",
     "test:score": "node scripts/score-team-spec.js fixtures/stock-trading-team.team-spec.json --format json",
-    "test:fixture": "node scripts/generate-team-skill.js --spec fixtures/stock-trading-team.team-spec.json --output .tmp/stock-trading-team --overwrite && node scripts/validate-generated-skill.js .tmp/stock-trading-team && node .tmp/stock-trading-team/scripts/run-acceptance-scenarios.js .tmp/stock-trading-team",
-    "test:venture": "node scripts/validate-team-spec.js examples/venture-building-team.team-spec.json && node scripts/generate-team-skill.js --spec examples/venture-building-team.team-spec.json --output .tmp/venture-building-team --overwrite && node scripts/validate-generated-skill.js .tmp/venture-building-team && node .tmp/venture-building-team/scripts/run-acceptance-scenarios.js .tmp/venture-building-team",
+    "test:fixture": "node scripts/run-generated-fixture-test.js --spec fixtures/stock-trading-team.team-spec.json",
+    "test:venture": "node scripts/run-generated-fixture-test.js --spec examples/venture-building-team.team-spec.json",
     "test:regression": "node scripts/run-release-regression-tests.js",
     "test": "npm run validate:structure && npm run validate:domain-packs && npm run validate:spec -- fixtures/stock-trading-team.team-spec.json && npm run test:score && npm run test:fixture && npm run test:venture && npm run test:regression"
   },

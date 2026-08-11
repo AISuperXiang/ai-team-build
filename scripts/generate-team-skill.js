@@ -16,6 +16,7 @@ const {
 } = require("./template-utils");
 const { validateSpec } = require("./validate-team-spec");
 const { renderScoreMarkdown, scoreSpec } = require("./score-team-spec");
+const { REQUIRED_COMMAND_FIELDS } = require("./command-contract");
 const generationPlan = require("./generation-plan");
 const templateEngine = require("./template-engine");
 
@@ -664,7 +665,6 @@ ${markdownList(spec.riskControls.blockedClaims)}
 }
 
 function renderCommand(spec) {
-  const owner = defaultOwner(spec);
   const rows = spec.commands.items.map((command) => tableRow([
     `\`${commandUsage(spec, command)} <输入>\``,
     command.workflow,
@@ -678,8 +678,6 @@ id: ${yamlScalar(commandFileName(spec.commands.prefix))}
 title: ${yamlScalar(`${spec.commands.prefix} 快捷指令`)}
 triggers:
 ${yamlList([spec.commands.prefix])}
-members:
-${yamlList([owner])}
 execution_mode: ${yamlScalar("sequential")}
 ---
 
@@ -1289,11 +1287,19 @@ function renderWorkflowSchema(title) {
 }
 
 function renderCommandSchema(title) {
-  return baseSchema(title, ["id", "title", "triggers", "members", "execution_mode"], {
+  return baseSchema(title, REQUIRED_COMMAND_FIELDS, {
     id: { type: "string", minLength: 1 },
     title: { type: "string", minLength: 1 },
-    triggers: stringArraySchema(),
-    members: stringArraySchema(),
+    triggers: {
+      ...stringArraySchema(),
+      minItems: 1
+    },
+    members: {
+      ...stringArraySchema(),
+      minItems: 1,
+      deprecated: true,
+      description: "Deprecated command-level role hints. Workflow members and rolePlan own role activation."
+    },
     execution_mode: { type: "string", enum: ["sequential", "hybrid"] }
   });
 }
@@ -1469,6 +1475,9 @@ const ROOT = path.resolve(__dirname, "..");
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage"]);
 const riskControls = ${json(spec.riskControls)};
 const memberIds = ${json(spec.members.map((member) => member.id))};
+const workflowIds = ${json(spec.workflows.map((workflow) => workflow.id))};
+const commandFile = ${json(`commands/${commandFileName(spec.commands.prefix)}.md`)};
+const requiredCommandFields = ${json(REQUIRED_COMMAND_FIELDS)};
 const results = [];
 function record(ok, message) { results.push({ ok, message }); }
 function read(relativePath) { return fs.readFileSync(path.join(ROOT, relativePath), "utf8"); }
@@ -1501,6 +1510,13 @@ function parseFrontmatter(content) {
     }
   }
   return data;
+}
+function isValidRequiredCommandField(field, value) {
+  if (field === "triggers") {
+    return Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === "string" && item.trim().length > 0);
+  }
+  if (field === "execution_mode") return ["sequential", "hybrid"].includes(value);
+  return typeof value === "string" && value.trim().length > 0;
 }
 function parseStageRows(content) {
   const rows = [];
@@ -1552,6 +1568,24 @@ const runtime = parseJson("skill-runtime.json");
 record(Boolean(runtime && runtime.agentHints && runtime.agentHints.executionPolicy), "runtime defines execution policy");
 record(Boolean(runtime && runtime.agentHints && runtime.agentHints.roleActivationPolicy), "runtime defines role activation policy");
 record(Boolean(runtime && runtime.agentHints && runtime.agentHints.verificationPolicy), "runtime defines verification boundary");
+const commandContent = read(commandFile);
+const command = parseFrontmatter(commandContent);
+record(Boolean(command), commandFile + " has frontmatter");
+for (const field of requiredCommandFields) {
+  record(
+    isValidRequiredCommandField(field, command && command[field]),
+    commandFile + " has required field: " + field
+  );
+}
+if (command && Object.prototype.hasOwnProperty.call(command, "members")) {
+  record(Array.isArray(command.members) && command.members.length > 0, commandFile + " deprecated members is a non-empty array");
+  for (const member of Array.isArray(command.members) ? command.members : []) {
+    record(memberIds.includes(member), commandFile + " deprecated members references existing member: " + member);
+  }
+}
+for (const workflowId of workflowIds) {
+  record(commandContent.includes(workflowId), commandFile + " references workflow id: " + workflowId);
+}
 const workflowStatus = parseJson("assets/templates/workflow-status.json");
 const rolePlan = workflowStatus && workflowStatus.rolePlan;
 record(["lightweight", "standard", "assurance"].includes(workflowStatus && workflowStatus.executionProfile), "workflow-status has valid executionProfile");
@@ -1597,6 +1631,11 @@ for (const schemaFile of [
 ]) {
   const schema = parseJson(schemaFile);
   record(schemaIsDeep(schema), schemaFile + " has required fields and properties");
+  if (schemaFile === "schemas/command.schema.json") {
+    record(requiredCommandFields.every((field) => schema.required.includes(field)), "command schema requires route fields");
+    record(!schema.required.includes("members"), "command schema does not require deprecated members");
+    record(Boolean(schema.properties.members && schema.properties.members.deprecated === true), "command schema marks members as deprecated");
+  }
   if (schemaFile === "schemas/status.schema.json") {
     record(Array.isArray(schema && schema.required) && schema.required.includes("rolePlan"), "status schema requires rolePlan");
     record(Boolean(schema && schema.properties && schema.properties.rolePlan), "status schema defines rolePlan");

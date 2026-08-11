@@ -2,6 +2,15 @@
 
 本目录维护 `ai-team-build` 的通用问题组队方法、运行治理、标品参考、规格编写指南、风险控制、评分边界和生成物质量门禁。
 
+## 架构约束
+
+- `team-spec.json` 是语义设计与确定性生成之间的中间表示。
+- command 是纯路由契约，不声明实际执行角色；workflow `members` 与运行期 `rolePlan` 负责角色调度。
+- `npm run verify:install` 是只读安装验证，`npm test` 是完整生成、验收和发布回归。
+- 生成型测试必须在系统临时目录运行并清理，不得向 Skill 根目录写入测试产物。
+- `scripts/generate-team-skill.js` 是当前生成真源；公开 `.tpl` 的关键契约必须由结构校验防止漂移。
+- 项目级维护规则见 [`../AGENTS.md`](../AGENTS.md)。
+
 推荐读取顺序：
 
 1. `reference-standard.md`

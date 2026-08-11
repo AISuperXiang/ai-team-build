@@ -8,7 +8,7 @@
 - `README_EN.md`：对应英文用户文档，必须链接回 `README.md`。
 - `SKILL.md`：面向 Agent，定义触发边界、路由规则、最小加载矩阵、执行循环、风险约束和最终输出契约。
 - `skill-runtime.json`：面向安装器和通用 Agent，声明入口、运行环境、requiredFiles、安装方式和 agentHints。
-- `package.json`：声明 Node 版本、验证脚本和生成物自身的 `npm test`。
+- `package.json`：声明 Node 版本、安装验证脚本和完整 `npm test`。
 - `evaluation-report.md`：记录当前团队评分、等级、维度证据、可提升项和能力升级建议。
 - `generation-report.json`：记录生成来源、文件计划、计数、评分摘要、验收场景和风险约束。
 - `skill-evolution-audit.md`：已有 Skill 的静态审计基线、发现、证据、验证建议和复审结论；按需生成，不要求写入目标 Skill。
@@ -43,6 +43,21 @@
 - `members` 是候选角色池；每个阶段 owner 必须属于候选池，但 `consulted` 或 `not_applicable` 角色不要求拥有静态阶段。
 - 每个声明质量门禁必须出现在阶段表 gates 中。
 
+## 命令标准
+
+- command 是触发和 workflow 路由契约，不拥有角色候选池。
+- command frontmatter 必须包含 `id`、`title`、`triggers`、`execution_mode`。
+- 新生成 command 不得声明 `members`；角色候选池只能由 workflow `members` 表达，实际参与者由 `rolePlan` 表达。
+- 为兼容旧生成物，command Schema 在 `0.5.x` 保留可选且标记为 deprecated 的 `members`；存在时必须是非空数组，且每项引用已声明成员。最早在 `0.6.0` 移除。
+- 不使用没有运行时消费者的 `executor` 字段替代角色调度契约。
+
+## 验证分层
+
+- 工厂的 `npm run verify:install` 必须只读，只执行结构、Schema/领域包、fixture 规格和 `--dry-run` 生成计划。
+- 工厂的 `npm test` 承担真实生成、生成物校验、验收场景和发布回归，不得被安装验证替代。
+- 物化生成物的测试必须使用系统临时目录，并在成功或失败后清理本次创建的目录。
+- 生成团队当前自带的 `npm test` 为只读契约验证，本次分层不改变其 `postInstall`。
+
 ## 运行治理标准
 
 - `docs/team-operating-model.md` 必须记录问题价值蓝图、默认复杂度、执行档位、目标验证等级、必需门禁和人工责任边界。
@@ -71,6 +86,8 @@
 - `scripts/template-engine.js`：docs、templates、能力矩阵、验收场景、数据契约渲染。
 - `scripts/synthesize-team-spec.js`：自然语言目标到 domain pack/spec 的合成入口。
 - `scripts/run-acceptance-scenarios.js`：生成物 golden 场景验收。
+- `scripts/run-generated-fixture-test.js`：在系统临时目录执行 fixture 规格校验、生成、生成物校验和验收，并保证清理。
+- `scripts/command-contract.js`：维护 command 路由 frontmatter 的共享必需字段。
 - `scripts/audit-skills.js`：对一个或多个已有 Skill 做无副作用的静态执行质量审计。
 - `domain-packs/`：可复用垂直领域包市场。
 
@@ -96,6 +113,7 @@
 - requiredFiles 存在。
 - workflow 引用的 member 存在。
 - workflow 候选成员、阶段 owner 和质量门禁引用一致。
+- command frontmatter 具备路由必需字段，不要求 `members`；旧 `members` 存在时引用有效。
 - command 引用的 workflow 存在。
 - route-table 覆盖所有 workflow。
 - docs/templates 通过非空内容检查。

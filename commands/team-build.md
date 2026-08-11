@@ -3,8 +3,6 @@ id: team-build
 title: /team-build 快捷指令
 triggers:
   - /team-build
-members:
-  - team-builder
 execution_mode: sequential
 ---
 

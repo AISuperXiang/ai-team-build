@@ -45,6 +45,17 @@ function assert(condition, message, details = "") {
   process.exit(1);
 }
 
+function frontmatterKeys(content) {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return [];
+  return match[1]
+    .split(/\r?\n/)
+    .map((line) => line.match(/^([A-Za-z0-9_-]+):/))
+    .filter(Boolean)
+    .map((item) => item[1])
+    .sort();
+}
+
 function testAcceptanceRejectsFakeDirectory() {
   const dir = tmpDir("fake-acceptance");
   writeJson(path.join(dir, "generation-report.json"), {
@@ -139,6 +150,86 @@ function testQuotedFrontmatterGeneration() {
     "generated contract validator parses quoted frontmatter arrays",
     generatedContracts.stdout + generatedContracts.stderr
   );
+}
+
+function testGeneratedFixtureRunnerCleansTemporaryDirectories() {
+  const successTmpRoot = tmpDir("fixture-runner-success");
+  const success = runNode(
+    ["scripts/run-generated-fixture-test.js", "--spec", "fixtures/stock-trading-team.team-spec.json"],
+    { env: { ...process.env, TMPDIR: successTmpRoot } }
+  );
+  assert(success.status === 0, "fixture runner succeeds from a system temporary directory", success.stdout + success.stderr);
+  assert(fs.readdirSync(successTmpRoot).length === 0, "fixture runner cleans temporary output after success");
+
+  const invalidSpecRoot = tmpDir("fixture-runner-invalid-spec");
+  const invalidSpecPath = path.join(invalidSpecRoot, "invalid-spec.json");
+  const invalidSpec = readFixtureSpec();
+  delete invalidSpec.domainKnowledge;
+  writeJson(invalidSpecPath, invalidSpec);
+  const failureTmpRoot = tmpDir("fixture-runner-failure");
+  const failure = runNode(
+    ["scripts/run-generated-fixture-test.js", "--spec", invalidSpecPath],
+    { env: { ...process.env, TMPDIR: failureTmpRoot } }
+  );
+  assert(failure.status !== 0, "fixture runner preserves validation failure status", failure.stdout + failure.stderr);
+  assert(fs.readdirSync(failureTmpRoot).length === 0, "fixture runner cleans temporary output after failure");
+}
+
+function testGeneratedCommandContractCompatibility() {
+  const dir = tmpDir("command-contract");
+  const spec = readFixtureSpec();
+  const specPath = path.join(dir, "spec.json");
+  const outputDir = path.join(dir, spec.skill.id);
+  writeJson(specPath, spec);
+  const generate = runNode(["scripts/generate-team-skill.js", "--spec", specPath, "--output", outputDir, "--overwrite"]);
+  assert(generate.status === 0, "generator writes command route contract", generate.stdout + generate.stderr);
+
+  const report = JSON.parse(fs.readFileSync(path.join(outputDir, "generation-report.json"), "utf8"));
+  const commandPath = path.join(outputDir, report.commandFile);
+  const command = fs.readFileSync(commandPath, "utf8");
+  const commandSchema = JSON.parse(fs.readFileSync(path.join(outputDir, "schemas", "command.schema.json"), "utf8"));
+  const commandTemplate = fs.readFileSync(path.join(ROOT, "assets", "templates", "command.md.tpl"), "utf8");
+
+  assert(!/^members:/m.test(command), "new generated command omits command-level members");
+  assert(!commandSchema.required.includes("members"), "command schema does not require deprecated members");
+  assert(commandSchema.properties.members.deprecated === true, "command schema marks members as deprecated");
+  assert(
+    JSON.stringify(frontmatterKeys(command)) === JSON.stringify(frontmatterKeys(commandTemplate)),
+    "command template and inline renderer expose the same frontmatter fields"
+  );
+
+  const validLegacyCommand = command.replace(
+    /^execution_mode:/m,
+    `members:\n  - ${JSON.stringify(spec.members[0].id)}\nexecution_mode:`
+  );
+  writeText(commandPath, validLegacyCommand);
+  const validExternal = runNode(["scripts/validate-generated-skill.js", outputDir]);
+  assert(validExternal.status === 0, "external validator accepts valid legacy command members", validExternal.stdout + validExternal.stderr);
+  const validInternal = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
+  assert(validInternal.status === 0, "generated validator accepts valid legacy command members", validInternal.stdout + validInternal.stderr);
+
+  const invalidLegacyCommand = validLegacyCommand.replace(spec.members[0].id, "unknown-command-member");
+  writeText(commandPath, invalidLegacyCommand);
+  const invalidExternal = runNode(["scripts/validate-generated-skill.js", outputDir]);
+  assert(invalidExternal.status !== 0, "external validator rejects unknown legacy command member");
+  const invalidInternal = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
+  assert(invalidInternal.status !== 0, "generated validator rejects unknown legacy command member");
+
+  const missingTitleCommand = command.replace(/^title:.*\n/m, "");
+  writeText(commandPath, missingTitleCommand);
+  const missingTitleExternal = runNode(["scripts/validate-generated-skill.js", outputDir]);
+  assert(missingTitleExternal.status !== 0, "external validator rejects command without required title");
+  const missingTitleInternal = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
+  assert(missingTitleInternal.status !== 0, "generated validator rejects command without required title");
+
+  const unknownWorkflowCommand = command
+    .split(spec.workflows[0].id)
+    .join("unknown-command-workflow");
+  writeText(commandPath, unknownWorkflowCommand);
+  const unknownWorkflowExternal = runNode(["scripts/validate-generated-skill.js", outputDir]);
+  assert(unknownWorkflowExternal.status !== 0, "external validator rejects command missing a declared workflow");
+  const unknownWorkflowInternal = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
+  assert(unknownWorkflowInternal.status !== 0, "generated validator rejects command missing a declared workflow");
 }
 
 function testUnmatchedDomainPackFallsBackToDraft() {
@@ -350,6 +441,8 @@ function main() {
   testMissingCoreSpecFieldsRejected();
   testUnsafeOutputDirectoryRejected();
   testQuotedFrontmatterGeneration();
+  testGeneratedFixtureRunnerCleansTemporaryDirectories();
+  testGeneratedCommandContractCompatibility();
   testUnmatchedDomainPackFallsBackToDraft();
   testExternalSkillAdaptersBlockAGrade();
   testInvalidSpecCannotScoreA();

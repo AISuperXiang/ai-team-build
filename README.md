@@ -78,6 +78,12 @@
 ```bash
 git clone https://github.com/AISuperXiang/ai-team-build.git
 cd ai-team-build
+npm run verify:install
+```
+
+该命令只执行结构、领域包、fixture 规格和生成计划 dry-run，不向 Skill 目录写入文件。开发、CI 和发布前仍运行完整验证：
+
+```bash
 npm test
 ```
 
@@ -198,6 +204,15 @@ Audit
 3. **Upgrade**：实施与目标 Skill 职责边界一致的最小改动。
 4. **Verify**：确认副作用边界后运行目标 Skill 的验证命令。
 5. **Re-audit**：复跑审计，记录分数变化、剩余风险和未覆盖范围。
+
+### 架构与验证分层
+
+- `team-spec.json` 是自然语言语义设计和确定性生成之间的中间表示。
+- command 只负责触发和 workflow 路由；workflow `members` 是角色候选池，运行期 `rolePlan` 决定实际参与角色。
+- 新生成 command 不再声明 `members`；旧字段仅作为兼容输入，存在时必须引用有效成员。
+- `npm run verify:install` 是只读安装校验，`npm test` 是完整生成、验收和发布回归。
+- 物化生成物的测试在系统临时目录运行，并在成功或失败后清理。
+- 更完整的工程规则见 [`AGENTS.md`](./AGENTS.md) 和 [`docs/reference-standard.md`](./docs/reference-standard.md)。
 
 ## 规格与治理模型
 
@@ -340,6 +355,7 @@ Audit
 
 ```text
 ai-team-build/
+├── AGENTS.md
 ├── SKILL.md
 ├── README.md
 ├── README_EN.md
@@ -364,10 +380,17 @@ ai-team-build/
 - 修改生成结构：同步更新 `docs/reference-standard.md`、`assets/templates/`、`scripts/generate-team-skill.js`、`scripts/generation-plan.js`、`scripts/template-engine.js` 和 `scripts/validate-generated-skill.js`。
 - 修改领域包：同步更新 `domain-packs/`、`schemas/domain-pack.schema.json`、`scripts/validate-domain-packs.js` 和相关示例规格。
 - 修改命令：同步更新 [`commands/team-build.md`](./commands/team-build.md)。
+- 修改 command 契约：同步更新 `scripts/command-contract.js`、命令模板、生成器、内外校验器和发布回归。
 - 修改审计规则：同步更新 `docs/skill-evolution-methodology.md`、`scripts/audit-skills.js` 和 `scripts/run-release-regression-tests.js`。
 - 修改运行环境、入口、安装方式或用户功能：同步更新 `skill-runtime.json`、`package.json` 和双语 README。
 
-结构或契约变化后运行：
+安装后运行只读验证：
+
+```bash
+npm run verify:install
+```
+
+结构、契约或发布逻辑变化后运行完整验证：
 
 ```bash
 npm test
@@ -386,6 +409,7 @@ git status --short
 - [`README_EN.md`](./README_EN.md)：英文用户文档。
 - [`SKILL.md`](./SKILL.md)：Agent 执行入口。
 - [`skill-runtime.json`](./skill-runtime.json)：面向安装器和通用 Agent 的机器可读运行时声明。
+- [`AGENTS.md`](./AGENTS.md)：面向代码维护 Agent 的架构边界、同步矩阵和验证规则。
 
 ## 代码仓库
 
