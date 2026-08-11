@@ -12,6 +12,28 @@
     ],
     "primaryValue": "把市场环境、板块题材、个股量价、策略假设、仓位风险和复盘纪律沉淀为可验证的研究流程。"
   },
+  "readme": {
+    "english": {
+      "name": "A-Share Stock Trading Research Team",
+      "description": "An expert-team Skill for A-share market research, strategy review, risk control, and trading-plan workflows.",
+      "domain": "A-share investment research and trading-plan assistance",
+      "primaryValue": "Turn market conditions, sector themes, stock price-volume behavior, strategy hypotheses, position risk, and review discipline into a verifiable research workflow.",
+      "targetUsers": [
+        "Agent users who need structured analysis of China's A-share market and individual stocks.",
+        "Individual researchers who need a risk-control and trading review framework."
+      ],
+      "riskDisclaimers": [
+        "This team's output is for research and educational assistance only and does not constitute investment advice.",
+        "This team does not replace advice from a licensed investment adviser; users remain solely responsible for their investment decisions and risks.",
+        "Every analysis must state its data sources, data freshness, position risks, and invalidation conditions."
+      ],
+      "blockedClaims": [
+        "Do not promise returns.",
+        "Do not issue deterministic buy or sell instructions.",
+        "Do not guarantee price increases, limit-up moves, recovery of losses, or profits."
+      ]
+    }
+  },
   "teamDesign": {
     "problemStatement": "个人研究者需要把 A 股市场、板块、个股、策略与风险判断组织为可追踪、可复核的研究流程。",
     "mission": "提供研究辅助团队，先证据、后策略、先风险、后交付，不替代用户或持牌投顾承担投资决策。",
