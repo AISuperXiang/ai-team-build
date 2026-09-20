@@ -23,6 +23,8 @@
 - `riskControls`：风险等级、免责声明、禁止性承诺和证据规则。
 - `output`：默认输出路径和覆盖策略。
 
+生成后，完整规格会保存为 `team-spec.snapshot.json`，并由 `generation-manifest.json` 绑定摘要。后续先修改该快照或新的完整规格，再通过 `--upgrade` 安全应用。
+
 ## 评分输入
 
 评分脚本不要求额外字段，但会读取以下信息：
@@ -147,3 +149,5 @@ strategy-review
 ```bash
 node scripts/validate-team-spec.js fixtures/stock-trading-team.team-spec.json
 ```
+
+`output.overwritePolicy=overwrite` 不会绕过目录安全检查。已有仓库使用 `--upgrade`；缺少 manifest、存在受管文件漂移或同名本地文件时必须先人工裁决。

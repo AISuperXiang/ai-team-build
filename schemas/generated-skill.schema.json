@@ -147,7 +147,8 @@
         "readOrder",
         "executionPolicy",
         "roleActivationPolicy",
-        "verificationPolicy"
+        "verificationPolicy",
+        "evolutionPolicy"
       ],
       "properties": {
         "readOrder": {
@@ -169,6 +170,9 @@
           "type": "string"
         },
         "verificationPolicy": {
+          "type": "string"
+        },
+        "evolutionPolicy": {
           "type": "string"
         },
         "externalSkillPolicy": {

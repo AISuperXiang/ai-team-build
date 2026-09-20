@@ -1,5 +1,6 @@
 const path = require("path");
 const { commandFileName } = require("./template-utils");
+const { MANIFEST_FILE, SPEC_SNAPSHOT_FILE } = require("./generated-artifacts");
 
 const CORE_GOVERNANCE_TEMPLATE_FILES = [
   "assets/templates/decision-log.md",
@@ -7,6 +8,12 @@ const CORE_GOVERNANCE_TEMPLATE_FILES = [
   "assets/templates/role-handoff.md",
   "assets/templates/evidence-index.md",
   "assets/templates/delivery-summary.md"
+];
+const BUILT_IN_TEMPLATE_FILES = [
+  ...CORE_GOVERNANCE_TEMPLATE_FILES,
+  "assets/templates/workflow-status.json",
+  "assets/templates/acceptance-results.json",
+  "assets/templates/iteration-feedback.json"
 ];
 
 function relativeTemplatePath(template) {
@@ -20,12 +27,26 @@ function coreGovernanceTemplateFiles(spec) {
   return CORE_GOVERNANCE_TEMPLATE_FILES.filter((file) => !declaredFiles.has(file));
 }
 
+function stageArtifactTemplateFiles(spec) {
+  const declaredFiles = new Set([
+    ...BUILT_IN_TEMPLATE_FILES,
+    ...(spec.templates || []).map(relativeTemplatePath)
+  ]);
+  const stageArtifacts = spec.workflows
+    .flatMap((workflow) => workflow.stages)
+    .flatMap((stage) => stage.outputs || [])
+    .filter((artifact) => /^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/.test(artifact))
+    .map((artifact) => `assets/templates/${artifact}`);
+  return [...new Set(stageArtifacts)].filter((file) => !declaredFiles.has(file)).sort();
+}
+
 function generationCounts(spec) {
   return {
     members: spec.members.length,
     workflows: spec.workflows.length,
     commands: spec.commands.items.length,
     templates: spec.templates.length,
+    stageArtifactTemplates: stageArtifactTemplateFiles(spec).length,
     externalSkills: spec.externalSkills.skills.length,
     acceptanceScenarios: (spec.acceptanceScenarios || []).length,
     dataContracts: (spec.dataContracts || []).length,
@@ -62,6 +83,8 @@ function plannedFilesForSpec(spec) {
     "evaluation-report.md",
     "package.json",
     "skill-runtime.json",
+    SPEC_SNAPSHOT_FILE,
+    MANIFEST_FILE,
     "generation-report.json",
     "commands/README.md",
     commandFile,
@@ -72,6 +95,7 @@ function plannedFilesForSpec(spec) {
     "docs/team-operating-model.md",
     "docs/execution-methodology.md",
     "docs/verification-methodology.md",
+    "docs/feedback-loop.md",
     "docs/role-activation-methodology.md",
     "docs/capability-matrix.md",
     "docs/acceptance-scenarios.md",
@@ -85,23 +109,29 @@ function plannedFilesForSpec(spec) {
     "members/README.md",
     "scripts/validate-structure.js",
     "scripts/validate-contracts.js",
+    "scripts/generated-artifacts.js",
     "scripts/governance-core.js",
     "scripts/assess-governance.js",
     "scripts/validate-workspace.js",
+    "scripts/summarize-feedback.js",
     "scripts/list-external-skills.js",
     "scripts/install-external-skills.js",
     "scripts/run-acceptance-scenarios.js",
+    "test/governance-core.test.js",
     "workflows/README.md",
     "workflows/route-table.md",
     "workflows/execution-protocol.md",
     "workspace/README.md",
     "assets/templates/workflow-status.json",
     "assets/templates/acceptance-results.json",
+    "assets/templates/iteration-feedback.json",
     ...coreGovernanceTemplateFiles(spec),
+    ...stageArtifactTemplateFiles(spec),
     "schemas/member.schema.json",
     "schemas/workflow.schema.json",
     "schemas/command.schema.json",
     "schemas/status.schema.json",
+    "schemas/feedback.schema.json",
     "schemas/skill-runtime.schema.json",
     ...memberFiles,
     ...workflowFiles,
@@ -130,5 +160,6 @@ module.exports = {
   coreGovernanceTemplateFiles,
   generationCounts,
   plannedFilesForSpec,
-  relativeTemplatePath
+  relativeTemplatePath,
+  stageArtifactTemplateFiles
 };

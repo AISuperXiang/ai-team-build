@@ -40,6 +40,7 @@ const requiredFiles = [
   "docs/risk-control-standard.md",
   "docs/team-scoring-rubric.md",
   "docs/generated-skill-quality-gates.md",
+  "docs/generated-skill-evolution.md",
   "docs/skill-evolution-methodology.md",
   "schemas/team-spec.schema.json",
   "schemas/generated-skill.schema.json",
@@ -48,11 +49,13 @@ const requiredFiles = [
   "scripts/command-contract.js",
   "scripts/template-engine.js",
   "scripts/generation-plan.js",
+  "scripts/generated-artifacts.js",
   "scripts/generate-team-skill.js",
   "scripts/synthesize-team-spec.js",
   "scripts/governance-core.js",
   "scripts/assess-governance.js",
   "scripts/validate-workspace.js",
+  "scripts/summarize-feedback.js",
   "scripts/run-acceptance-scenarios.js",
   "scripts/run-generated-fixture-test.js",
   "scripts/audit-skills.js",
@@ -66,6 +69,7 @@ const requiredFiles = [
   "domain-packs/product-rd/domain-pack.json",
   "domain-packs/venture-building/domain-pack.json",
   "examples/product-rd-team.team-spec.json",
+  "examples/frontend-performance-analysis-team.team-spec.json",
   "examples/venture-building-team.team-spec.json",
   "fixtures/stock-trading-team.team-spec.json"
 ];
@@ -98,6 +102,8 @@ const templateFiles = [
   "assets/templates/template-md.md.tpl",
   "assets/templates/workflow-status.json.tpl",
   "assets/templates/acceptance-results.json.tpl",
+  "assets/templates/iteration-feedback.json.tpl",
+  "assets/templates/governance-core.test.js.tpl",
   "assets/templates/validate-structure.js.tpl",
   "assets/templates/validate-contracts.js.tpl",
   "assets/templates/list-external-skills.js.tpl",
@@ -252,6 +258,7 @@ if (existsFile("package.json")) {
     Boolean(packageJson && packageJson.scripts &&
       !packageJson.scripts["verify:install"].includes("npm test") &&
       !packageJson.scripts["verify:install"].includes("test:fixture") &&
+      !packageJson.scripts["verify:install"].includes("test:performance") &&
       !packageJson.scripts["verify:install"].includes("test:venture") &&
       !packageJson.scripts["verify:install"].includes("test:regression")),
     "verify:install does not invoke complete or materializing test suites"
@@ -263,6 +270,10 @@ if (existsFile("package.json")) {
   record(
     Boolean(packageJson && packageJson.scripts && packageJson.scripts["test:venture"] && packageJson.scripts["test:venture"].includes("run-generated-fixture-test.js")),
     "test:venture uses the system temporary directory runner"
+  );
+  record(
+    Boolean(packageJson && packageJson.scripts && packageJson.scripts["test:performance"] && packageJson.scripts["test:performance"].includes("run-generated-fixture-test.js")),
+    "test:performance uses the system temporary directory runner"
   );
   record(packageJson && Array.isArray(packageJson.files) && packageJson.files.length > 0, "package.json declares publish files allowlist");
   record(packageJson && Array.isArray(packageJson.files) && packageJson.files.includes("AGENTS.md"), "package.json publishes AGENTS.md");
@@ -281,6 +292,7 @@ if (existsFile("skill-runtime.json")) {
   record(Boolean(runtime && runtime.agentHints && runtime.agentHints.executionPolicy), "runtime defines execution policy");
   record(Boolean(runtime && runtime.agentHints && runtime.agentHints.roleActivationPolicy), "runtime defines role activation policy");
   record(Boolean(runtime && runtime.agentHints && runtime.agentHints.verificationPolicy), "runtime defines verification boundary");
+  record(Boolean(runtime && runtime.agentHints && runtime.agentHints.skillEvolutionPolicy), "runtime defines skill evolution policy");
   record(
     runtime && runtime.install && Array.isArray(runtime.install.postInstall) &&
       runtime.install.postInstall.length === 1 && runtime.install.postInstall[0] === INSTALL_VERIFY_COMMAND,
@@ -312,6 +324,7 @@ for (const file of [
   "schemas/generated-skill.schema.json",
   "schemas/domain-pack.schema.json",
   "examples/product-rd-team.team-spec.json",
+  "examples/frontend-performance-analysis-team.team-spec.json",
   "examples/venture-building-team.team-spec.json",
   "fixtures/stock-trading-team.team-spec.json",
   "domain-packs/stock-trading/domain-pack.json",

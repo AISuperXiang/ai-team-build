@@ -11,6 +11,8 @@
 - `package.json`：声明 Node 版本、安装验证脚本和完整 `npm test`。
 - `evaluation-report.md`：记录当前团队评分、等级、维度证据、可提升项和能力升级建议。
 - `generation-report.json`：记录 `generator`、`generatorVersion`、生成来源、文件计划、计数、评分摘要、验收场景和风险约束。
+- `team-spec.snapshot.json`：保存本次经过校验的完整生成输入，作为后续升级的权威规格基线。
+- `generation-manifest.json`：保存所有工厂受管文件的 SHA-256 与大小，用于漂移检测和无损升级。
 - `skill-evolution-audit.md`：已有 Skill 的静态审计基线、发现、证据、验证建议和复审结论；按需生成，不要求写入目标 Skill。
 
 ## 标准目录
@@ -22,6 +24,7 @@
 - `assets/templates/`：交付物模板，每个章节必须有填写规则或证据要求。
 - `schemas/`：机器可读结构契约，必须包含 `required` 和 `properties`。
 - `scripts/`：结构校验、契约校验、验收场景、外部 Skill 辅助脚本。
+- `test/`：治理核心黑盒回归，至少覆盖初始 review、可信通过、零执行阻断和人工审批阻断。
 - `external-skills/`：可推荐外部 Skill 清单、Adapter Registry、安装策略和角色映射。
 - `external-cli/`：本地 CLI 能力登记。
 - `workspace/`：过程产物、证据、决策、风险和交付摘要。
@@ -48,7 +51,7 @@
 - command 是触发和 workflow 路由契约，不拥有角色候选池。
 - command frontmatter 必须包含 `id`、`title`、`triggers`、`execution_mode`。
 - 新生成 command 不得声明 `members`；角色候选池只能由 workflow `members` 表达，实际参与者由 `rolePlan` 表达。
-- 为兼容旧生成物，command Schema 在 `0.5.x` 保留可选且标记为 deprecated 的 `members`；存在时必须是非空数组，且每项引用已声明成员。最早在 `0.6.0` 移除。
+- `0.6.0` 起 command Schema 使用 `additionalProperties: false` 并拒绝 command-level `members`。
 - 不使用没有运行时消费者的 `executor` 字段替代角色调度契约。
 
 ## 验证分层
@@ -80,6 +83,7 @@
 - `docs/methodologies/`、`docs/engineering-standards/`、`docs/integrations/` 下文档不得只有标题或占位内容。
 - `assets/templates/` 下模板不得为空 bullet。
 - 所有生成团队必须具备决策、风险、交接、证据索引、交付摘要和工作流状态模板；领域规格可覆盖同路径保底模板。
+- 每个工作流阶段声明的 Markdown 产物必须有模板；缺少领域模板时工厂生成通用 fallback，并在后续反馈中评估是否需要升级为专用模板。
 
 ## 工厂模块标准
 
@@ -93,6 +97,8 @@
 - `scripts/validate-workspace.js`：核对真实任务的角色、阶段、产物、证据引用、分维度验证和治理状态。
 - `scripts/run-acceptance-scenarios.js`：分离静态契约检查与结构化场景执行验收。
 - `scripts/run-generated-fixture-test.js`：在系统临时目录执行 fixture 规格校验、生成、生成物校验和验收，并保证清理。
+- `scripts/generated-artifacts.js`：生成受管文件 manifest、检测漂移并执行冲突前置的事务式升级。
+- `scripts/summarize-feedback.js`：聚合真实任务的返工、角色、证据和能力缺口，生成可排序的演进信号。
 - `scripts/command-contract.js`：维护 command 路由 frontmatter 的共享必需字段。
 - `scripts/audit-skills.js`：对一个或多个已有 Skill 做无副作用的静态执行质量审计。
 - `domain-packs/`：可复用垂直领域包市场。
@@ -115,11 +121,12 @@
 生成物必须通过：
 
 - 根文件存在。
+- 生成目录 basename、`SKILL.md` name、package name、runtime skill id 和规范 skill id 一致。
 - `README.md` 与 `README_EN.md` 双向链接，且分别声明中文默认文档和英文文档职责。
 - requiredFiles 存在。
 - workflow 引用的 member 存在。
 - workflow 候选成员、阶段 owner 和质量门禁引用一致。
-- command frontmatter 具备路由必需字段，不要求 `members`；旧 `members` 存在时引用有效。
+- command frontmatter 具备路由必需字段且不包含 `members`，command Schema 拒绝该字段。
 - command 引用的 workflow 存在。
 - route-table 覆盖所有 workflow。
 - docs/templates 通过非空内容检查。
@@ -134,4 +141,6 @@
 - 高风险领域包含人工责任人、触发条件和无批准阻断。
 - `evaluation-report.md` 存在，且 `generation-report.json` 包含评分摘要。
 - `generation-report.json` 明确工厂 V2、生成团队 V0 和目标验证等级，禁止把蓝图评分解释为业务认证。
+- 规范快照摘要与 manifest 一致，所有受管文件哈希与当前内容一致。
+- 生成治理单测通过；反馈模板、反馈 Schema 和聚合脚本存在。
 - 不存在未替换模板占位符。

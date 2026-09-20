@@ -43,6 +43,7 @@ function main() {
       "assets/templates/workflow-status.json",
       "--json"
     ], { cwd: outputDir });
+    runNode(["--test", path.join(outputDir, "test", "governance-core.test.js")], { cwd: outputDir });
     runNode([path.join(outputDir, "scripts", "run-acceptance-scenarios.js"), outputDir, "--mode", "contracts"]);
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });

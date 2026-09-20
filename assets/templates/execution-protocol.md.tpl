@@ -10,8 +10,9 @@
 8. Execute
 9. Verify by scope
 10. Assess
-11. Score
-12. Deliver
+11. Record feedback
+12. Score
+13. Deliver
 
 ## Execution Profiles
 

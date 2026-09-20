@@ -1,8 +1,8 @@
 ---
-name: "ai-team-build"
-description: "AI Team Skill generator and evolution auditor. Use when users invoke /team-build or ask to create, build, customize, review, validate, package, batch-audit, or upgrade an agent team Skill from a team goal, team-spec JSON, or existing Skill path."
+name: ai-team-build
+description: Builds, validates, audits, and safely upgrades governed AI team Skills. Use for /team-build, team-spec generation, generated Skill validation, batch audits, or feedback-driven evolution.
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # AI Team Build
@@ -46,6 +46,7 @@ metadata:
 | `/team-build from-spec <spec>` | `validate spec -> dry-run plan -> generate -> validate -> score -> acceptance` | `validate:generated` + acceptance |
 | `/team-build review <spec>` | `validate spec -> score spec -> report blockers` | `npm run validate:spec -- <spec>` + `npm run score -- <spec>` |
 | `/team-build validate <skill-path>` | `validate structure -> validate contracts -> acceptance` | 目标 Skill 自带 `npm test` 或等价脚本 |
+| `/team-build upgrade <skill-path> [spec]` | `feedback -> update spec -> dry-run merge -> conflict review -> upgrade -> validate` | `--upgrade --dry-run`、目标 Skill `npm test` |
 | `/team-build elevate <skill-path...>` | `static audit -> prioritize -> targeted upgrade -> target verification -> re-audit` | `audit:skills`；目标 Skill 验证命令需用户/执行环境确认 |
 | 安装后验证 | `structure -> domain packs -> fixture spec -> generation dry-run` | `npm run verify:install`，不得写入 Skill 目录 |
 | 发布前审查 | `npm test -> npm pack --dry-run --json -> sensitive scan -> git status` | 必须输出命令证据 |
@@ -57,6 +58,7 @@ metadata:
 | `/team-build` 或自然语言路由 | `commands/team-build.md`、`schemas/team-spec.schema.json` | `docs/spec-authoring-guide.md`、`domain-packs/README.md` |
 | 生成或补齐团队规格 | `schemas/team-spec.schema.json`、`docs/generation-methodology.md`、`docs/risk-control-standard.md` | `domain-packs/*/domain-pack.json`、`examples/*.team-spec.json`、`fixtures/stock-trading-team.team-spec.json` |
 | 从规格生成 Skill | `scripts/generate-team-skill.js`、`scripts/validate-team-spec.js`、`docs/reference-standard.md` | `scripts/generation-plan.js`、`scripts/template-engine.js` |
+| 升级生成团队 | `docs/generated-skill-evolution.md`、`scripts/generated-artifacts.js` | 目标团队的 `team-spec.snapshot.json`、`generation-manifest.json` 和反馈摘要 |
 | 校验生成物 | `scripts/validate-generated-skill.js`、`docs/generated-skill-quality-gates.md` | 目标 Skill 的 `generation-report.json` |
 | 验收生成物 | `scripts/run-acceptance-scenarios.js`、`scripts/governance-core.js` | 目标 Skill 的 `generation-report.json`、`docs/acceptance-scenarios.md`、执行结果 JSON |
 | 评分与升级建议 | `scripts/score-team-spec.js`、`docs/team-scoring-rubric.md` | 目标 Skill 的 `evaluation-report.md`、`generation-report.json` |
@@ -79,8 +81,10 @@ metadata:
 7. **Acceptance**：先用 `--mode contracts` 校验静态契约；只有获得真实场景结果后才用
    `--mode execution --results <workspace-relative-json>` 验收输入绑定、角色、产物、门禁、反例和执行结果。
 8. **Score**：调用 `node scripts/score-team-spec.js <spec-path>` 或读取生成物 `evaluation-report.md`，输出总分、等级、维度得分、短板和升级建议。
-9. **Elevate**：审计已有 Skill 时，先运行 `scripts/audit-skills.js`，只处理有证据的 P0/P1/P2；修改后运行目标 Skill 已声明的验证命令并复跑静态审计。
-10. **Deliver**：输出生成路径或审计报告、核心文件、验证命令、验收结果、评分结论、升级建议、风险和后续注册说明。
+9. **Feedback**：对真实任务使用反馈进行结构化聚合，把返工、角色、证据和能力缺口映射为候选规格变更。
+10. **Upgrade**：已有 0.6+ 生成团队先运行 `--upgrade --dry-run`；受管文件漂移必须人工裁决，`.git`、workspace 和未受管文件保持不变。
+11. **Elevate**：审计已有 Skill 时，先运行 `scripts/audit-skills.js`，只处理有证据的 P0/P1/P2；修改后运行目标 Skill 已声明的验证命令并复跑静态审计。
+12. **Deliver**：输出生成路径或审计报告、核心文件、验证命令、验收结果、评分结论、升级建议、风险和后续注册说明。
 
 如果信息不足但可从规格、示例或仓库探索获得，先探索；只有目标定位、合规边界、输出路径和覆盖策略无法推断时才询问用户。
 
@@ -93,6 +97,8 @@ npm run spec -- --goal "<团队目标>" --output .tmp/team-spec.json
 npm run validate:spec -- .tmp/team-spec.json
 npm run score -- .tmp/team-spec.json
 npm run generate -- --spec .tmp/team-spec.json --output <skills-root>/<skill-id>
+npm run generate -- --spec <generated>/team-spec.snapshot.json --output <generated> --upgrade --dry-run
+npm run generate -- --spec <updated-spec.json> --output <generated> --upgrade
 npm run validate:generated -- <skills-root>/<skill-id>
 node <skills-root>/<skill-id>/scripts/run-acceptance-scenarios.js <skills-root>/<skill-id> --mode contracts
 node <skills-root>/<skill-id>/scripts/run-acceptance-scenarios.js <skills-root>/<skill-id> --mode execution --results workspace/acceptance-results.json
@@ -105,7 +111,7 @@ npm test
 npm pack --dry-run --json
 ```
 
-优先使用 `--dry-run` 查看生成计划。只有用户明确要求覆盖，且目标目录确认为本工具生成目录时，才允许使用 `--overwrite`。
+新建团队优先使用 `--dry-run` 查看生成计划。维护已有仓库使用 `--upgrade`；它根据 manifest 阻断受管文件漂移并保留 Git、workspace 和未受管文件。`--overwrite` 只允许处理无 Git、无漂移、无额外文件的可丢弃生成目录。
 
 `verify:install` 是只读安装验证，不得调用 `--overwrite` 或在 Skill 目录物化生成物。`npm test` 是开发、CI 和发布前的完整验证；需要生成目录的测试必须使用系统临时目录并在成功或失败后清理。
 
@@ -121,14 +127,15 @@ npm pack --dry-run --json
 - 阶段 owner 必须来自当前工作流候选角色池；`consulted` 或 `not_applicable` 候选角色不需要伪造静态阶段。
 - 工作流声明的每个质量门禁必须出现在阶段 gates 中。
 - command 只负责触发和 workflow 路由，必需字段为 `id`、`title`、`triggers`、`execution_mode`。
-- 新 command 不声明 `members`；旧 command 的 `members` 仅作为可选兼容字段，存在时必须引用已声明成员。
+- command 不声明 `members`；角色候选池只由 workflow `members` 表达。
 - 命令引用的工作流必须存在。
 - 每个工作流至少有阶段、产物和门禁。
+- 每个阶段声明的 Markdown 产物必须有模板；规格缺失时生成通用 fallback，并在反馈中评估是否需专用模板。
 - A 级团队必须包含 `domainKnowledge`、`capabilityMatrix`、`acceptanceScenarios` 和 `dataContracts`。
 - A 级 v2 蓝图还必须包含完整问题价值契约、治理模型、角色激活条件和结构化验收执行期望。
 - 如果声明 external skills，A 级团队必须包含 `externalSkills.adapters`，记录输入、输出、授权、降级和验证命令。
 - `docs.*[].content` 和 `templates[].content` 应覆盖每个章节，不得保留空 bullet 或“待执行时补齐”占位。
-- 生成物必须包含 `README.md`、`README_EN.md`、`SKILL.md`、`package.json`、`skill-runtime.json`、`commands/`、`docs/`、`schemas/`、`assets/templates/`、`scripts/`、`members/`、`workflows/`、`workspace/`、`external-skills/`、`external-cli/`。
+- 生成物必须包含 `README.md`、`README_EN.md`、`SKILL.md`、`package.json`、`skill-runtime.json`、`team-spec.snapshot.json`、`generation-manifest.json`、`commands/`、`docs/`、`schemas/`、`assets/templates/`、`scripts/`、`test/`、`members/`、`workflows/`、`workspace/`、`external-skills/`、`external-cli/`。
 - 生成物必须包含治理评估器；终态 claim 只能由 confirmed contract、授权 invocation、
   required checks、可信 assertion/runner/wrapper 结果和适用人工审批共同支持。
 - 静态 acceptance contracts 不得表述为场景执行；execution 模式缺场景、角色、产物哈希、
@@ -140,7 +147,8 @@ npm pack --dry-run --json
 - 不得在源码、README、SKILL 或生成物中写入本地绝对路径；统一使用 `<skills-root>`、`<ai-team-build-root>` 或相对路径。
 - 不得把私有凭证、Token、Cookie、机器名或环境特定路径写入生成物。
 - 不得默认安装 external skills；只允许生成 `external-skills/catalog.json` 和 `external-skills/adapters.json`。
-- 使用 `--overwrite` 前必须确认目标目录是本工具生成目录，至少应存在 `generation-report.json` 且 `generator` 为 `ai-team-build`。
+- 已有生成团队优先使用 `--upgrade`。缺少 `generation-manifest.json` 的旧团队必须先生成到独立目录并人工合并一次。
+- `--overwrite` 必须由代码确认 manifest、skill id、零漂移、无 Git 和无额外文件，不能只依赖调用者确认。
 - 高风险领域不能输出确定性承诺，必须写入免责声明、禁止性承诺、证据规则和人工复核要求。
 - 生成器脚本必须保持离线、确定性且无外部副作用；未命中领域包时使用通用价值链草案，语义质量由 Agent 复核。
 
@@ -204,6 +212,7 @@ git status --short
 
 - 修改规格字段时，同步更新 `schemas/team-spec.schema.json`、`docs/spec-authoring-guide.md`、`scripts/validate-team-spec.js` 和 fixture。
 - 修改生成结构时，同步更新 `docs/reference-standard.md`、`assets/templates/`、`scripts/generate-team-skill.js`、`scripts/generation-plan.js`、`scripts/template-engine.js` 和 `scripts/validate-generated-skill.js`。
+- 修改升级、manifest 或反馈契约时，同步更新 `docs/generated-skill-evolution.md`、`scripts/generated-artifacts.js`、生成器、生成物校验器和发布回归。
 - 修改领域包时，同步更新 `domain-packs/`、`schemas/domain-pack.schema.json`、`scripts/validate-domain-packs.js` 和相关 spec。
 - 修改评分标准时，同步更新 `docs/team-scoring-rubric.md`、`scripts/score-team-spec.js`、`scripts/generate-team-skill.js` 和 fixture。
 - 修改已有 Skill 审计规则时，同步更新 `docs/skill-evolution-methodology.md`、`scripts/audit-skills.js`、`scripts/run-release-regression-tests.js` 和 README。

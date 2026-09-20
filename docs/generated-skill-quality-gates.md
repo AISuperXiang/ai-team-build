@@ -4,15 +4,16 @@
 
 ## structure-gate
 
-- 根文件存在：`SKILL.md`、`README.md`、`README_EN.md`、`package.json`、`skill-runtime.json`。
+- 根文件存在：`SKILL.md`、`README.md`、`README_EN.md`、`package.json`、`skill-runtime.json`、`team-spec.snapshot.json`、`generation-manifest.json`。
 - `README.md` 与 `README_EN.md` 必须提供双向语言链接，并分别声明默认中文和英文文档职责。
-- 标准目录存在：`members/`、`workflows/`、`commands/`、`docs/`、`schemas/`、`assets/templates/`、`scripts/`、`external-skills/`、`external-cli/`、`workspace/`。
+- 标准目录存在：`members/`、`workflows/`、`commands/`、`docs/`、`schemas/`、`assets/templates/`、`scripts/`、`test/`、`external-skills/`、`external-cli/`、`workspace/`。
 - `skill-runtime.json.install.requiredFiles` 中的路径均存在。
 
 ## agent-entry-gate
 
 - `SKILL.md` 有 frontmatter。
 - frontmatter 的 `name` 与 `skill-runtime.json.skill.id` 一致。
+- 生成目录 basename 与 `skill.id` 一致；重命名目录必须先迁移规范身份。
 - `description` 包含明确触发条件。
 
 ## command-workflow-gate
@@ -20,7 +21,7 @@
 - 主命令文件存在。
 - command frontmatter 必须包含 `id`、`title`、`triggers`、`execution_mode`。
 - 新生成 command 不声明 `members`；角色候选池由 workflow `members` 和运行期 `rolePlan` 唯一表达。
-- 兼容旧 command 时，`members` 为可选弃用字段；一旦声明，必须是非空数组且全部引用已声明成员。
+- `0.6.0` 起 command Schema 拒绝 command-level `members`。
 - 命令引用的 workflow 存在。
 - `workflows/route-table.md` 覆盖所有 workflow。
 
@@ -46,6 +47,7 @@
 - 生成物不得残留未替换模板占位符。
 - 模板章节不得为空 bullet。
 - 模板不得只保留“待执行时补齐”等占位文案。
+- 每个工作流阶段声明的 Markdown 产物都必须存在对应模板；规格未声明时由工厂生成通用 fallback。
 
 ## content-depth-gate
 
@@ -136,6 +138,29 @@ node <generated-skill-path>/scripts/run-acceptance-scenarios.js <generated-skill
 ```
 
 生成工厂的结构与契约验证等级为 V2。新生成团队的真实业务验证等级必须保持 V0，直到真实任务证据支持升级；不得把 A 级蓝图写成业务效果已验证。
+
+## reproducibility-and-upgrade-gate
+
+- 生成物包含完整 `team-spec.snapshot.json`。
+- `generation-report.json.specDigest` 与规范快照 SHA-256 一致。
+- `generation-manifest.json` 覆盖所有工厂受管文件并记录 SHA-256 和大小。
+- `--upgrade --dry-run` 不修改目标目录。
+- 升级保留 `.git`、workspace 任务和未受管文件。
+- 受管文件被人工修改、删除或被同名本地文件占用时，升级必须在写入前阻断。
+- `--overwrite` 不得删除 Git 仓库、漂移文件或额外文件。
+
+## governance-regression-gate
+
+- 生成物包含 `test/governance-core.test.js`。
+- `npm test` 必须执行治理单测。
+- 单测至少证明初始模板保持 review、可信证据可 ready、零执行不可通过、缺真人审批会阻断。
+
+## feedback-loop-gate
+
+- 生成物包含 `assets/templates/iteration-feedback.json`、`schemas/feedback.schema.json`、`docs/feedback-loop.md` 和 `scripts/summarize-feedback.js`。
+- 聚合器拒绝未完成模板、未知 workflow、未知角色、越界路径、符号链接和超限输入。
+- 重复证据缺口、能力缺口、角色问题和返工必须形成可排序的 P1/P2/P3 信号。
+- 反馈只用于演进优先级，不得冒充业务结果验证。
 
 ## evolution-audit-gate
 

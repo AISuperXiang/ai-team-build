@@ -19,6 +19,7 @@ execution_mode: sequential
 | `/team-build from-spec <spec-path>` | 从已有规格生成 Skill | `team-spec.json` 路径 | 新团队 Skill 目录、验证结果、`evaluation-report.md` |
 | `/team-build validate <skill-path>` | 校验生成出来的 Skill | 生成物目录 | 结构、契约和风险约束检查结果 |
 | `/team-build score <team-spec.json>` | 对团队规格打分并给升级建议 | 规格文件路径 | 总分、等级、短板和能力升级建议 |
+| `/team-build upgrade <skill-path> [spec]` | 基于规范和 manifest 安全升级生成团队 | 0.6+ 生成团队，可选更新后规格 | 漂移冲突、保留文件和升级结果 |
 | `/team-build elevate <skill-path...>` | 审计并升华已有 Skill | 一个或多个 Skill 路径，或 skills 根目录 | 静态审计报告、优先级、改进计划和验证清单 |
 | `/team-build list-templates` | 列出内置模板 | 无 | 可生成资产清单 |
 
@@ -31,6 +32,7 @@ execution_mode: sequential
 | “根据这个规格生成团队 Skill” | `/team-build from-spec <spec-path>` |
 | “校验这个生成出来的团队 Skill” | `/team-build validate <skill-path>` |
 | “给这个团队 Skill 打分，看哪里能升级” | `/team-build score <team-spec.json>` |
+| “根据使用反馈升级这个生成团队” | `/team-build upgrade <skill-path> [spec]` |
 | “批量检查这些 Skill 可以怎样升华” | `/team-build elevate <skill-path...>` |
 | “先帮我推导角色和 workflow” | `/team-build spec <团队目标>` |
 
@@ -46,15 +48,18 @@ execution_mode: sequential
 8. 生成后调用 `<generated>/scripts/run-acceptance-scenarios.js <generated> --mode contracts`；
    只有获得真实场景结果时才调用 `--mode execution --results <workspace-relative-json>`。
 9. 生成后读取 `evaluation-report.md` 或调用 `scripts/score-team-spec.js`。
-10. 输出生成路径、角色数量、命令数量、工作流数量、内容深度、验收资产、Adapter、蓝图认证、工厂/团队验证等级、评分结论、升级建议和风险约束。
-11. 对 `/team-build elevate` 读取 `docs/skill-evolution-methodology.md`，先运行 `scripts/audit-skills.js` 获取静态基线，再按 P0/P1/P2 优先级实施最小改动。
-12. `audit-skills.js` 不执行目标 Skill 脚本；修改完成后，只有在环境和副作用边界已确认时才运行目标 Skill 的验证命令，并复跑审计。
+10. 对 `/team-build upgrade` 读取 `docs/generated-skill-evolution.md`，先聚合反馈并更新规范，再执行 `--upgrade --dry-run`；有 managed-file 冲突时不得写入。
+11. 输出生成路径、角色数量、命令数量、工作流数量、内容深度、验收资产、Adapter、蓝图认证、工厂/团队验证等级、评分结论、升级建议和风险约束。
+12. 对 `/team-build elevate` 读取 `docs/skill-evolution-methodology.md`，先运行 `scripts/audit-skills.js` 获取静态基线，再按 P0/P1/P2 优先级实施最小改动。
+13. `audit-skills.js` 不执行目标 Skill 脚本；修改完成后，只有在环境和副作用边界已确认时才运行目标 Skill 的验证命令，并复跑审计。
 
 ## 失败处理
 
 - 缺少团队目标：要求用户补充目标、受众、核心任务、风险边界。
 - 无法推导角色：先产出候选角色并要求用户裁决。
-- 输出目录已存在：默认阻断，除非用户显式允许覆盖或命令包含 `--overwrite`。
+- 输出目录已存在：默认阻断；维护仓库使用 `--upgrade`。`--overwrite` 仅适用于有有效 manifest、无 Git、无漂移和无额外文件的可丢弃目录。
+- 升级发现受管文件已修改、删除或被同名本地文件占用：写入前阻断并输出冲突清单。
+- 旧生成团队缺少 `generation-manifest.json`：生成到独立目录并人工合并一次，不猜测覆盖。
 - 高风险领域缺少风险约束：阻断生成，要求补充免责声明、禁止性承诺和证据规则。
 - 高风险领域缺少人工责任人、复核触发条件或无批准阻断：阻断生成。
 - 缺少领域内容或验收场景：允许生成草案，但不得评为 A 级；需列为高优先级升级项。

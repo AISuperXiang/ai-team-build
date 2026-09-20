@@ -1,6 +1,6 @@
 {
   "name": "ai-team-build",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Universal AI team skill factory that turns described problems into governed, verifiable agent teams.",
   "repository": {
     "type": "git",
@@ -40,9 +40,10 @@
     "verify:install": "npm run validate:structure && npm run validate:domain-packs && npm run validate:spec -- fixtures/stock-trading-team.team-spec.json && npm run generate -- --spec fixtures/stock-trading-team.team-spec.json --output .tmp/install-smoke/stock-trading-team --dry-run",
     "test:score": "node scripts/score-team-spec.js fixtures/stock-trading-team.team-spec.json --format json",
     "test:fixture": "node scripts/run-generated-fixture-test.js --spec fixtures/stock-trading-team.team-spec.json",
+    "test:performance": "node scripts/run-generated-fixture-test.js --spec examples/frontend-performance-analysis-team.team-spec.json",
     "test:venture": "node scripts/run-generated-fixture-test.js --spec examples/venture-building-team.team-spec.json",
     "test:regression": "node scripts/run-release-regression-tests.js",
-    "test": "npm run validate:structure && npm run validate:domain-packs && npm run validate:spec -- fixtures/stock-trading-team.team-spec.json && npm run test:score && npm run test:fixture && npm run test:venture && npm run test:regression"
+    "test": "npm run validate:structure && npm run validate:domain-packs && npm run validate:spec -- fixtures/stock-trading-team.team-spec.json && npm run test:score && npm run test:fixture && npm run test:performance && npm run test:venture && npm run test:regression"
   },
   "license": "MIT"
 }

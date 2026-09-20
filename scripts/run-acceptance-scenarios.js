@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { LEVELS, resultSupportsPass } = require("./governance-core");
+const generatedArtifacts = require("./generated-artifacts");
 
 const TEXT_EXTENSIONS = new Set([".md", ".json", ".js"]);
 const MAX_RESULTS_BYTES = 256 * 1024;
@@ -14,6 +15,8 @@ const REQUIRED_GENERATED_FILES = [
   "README.md",
   "README_EN.md",
   "evaluation-report.md",
+  "team-spec.snapshot.json",
+  "generation-manifest.json",
   "generation-report.json",
   "docs/acceptance-scenarios.md",
   "docs/quality-gates.md",
@@ -21,14 +24,20 @@ const REQUIRED_GENERATED_FILES = [
   "docs/team-operating-model.md",
   "docs/execution-methodology.md",
   "docs/verification-methodology.md",
+  "docs/feedback-loop.md",
   "docs/integrations/data-contracts.md",
   "assets/templates/workflow-status.json",
   "assets/templates/acceptance-results.json",
+  "assets/templates/iteration-feedback.json",
   "assets/templates/decision-log.md",
   "assets/templates/risk-register.md",
   "assets/templates/role-handoff.md",
   "assets/templates/evidence-index.md",
-  "assets/templates/delivery-summary.md"
+  "assets/templates/delivery-summary.md",
+  "scripts/generated-artifacts.js",
+  "scripts/summarize-feedback.js",
+  "schemas/feedback.schema.json",
+  "test/governance-core.test.js"
 ];
 
 class CliError extends Error {}
@@ -258,6 +267,8 @@ function runContractChecks(root) {
 
   record(results, report.generator === "ai-team-build", "generation-report was produced by ai-team-build");
   record(results, /^\d+\.\d+\.\d+$/.test(String(report.generatorVersion || "")), "generation-report has semantic generator version");
+  record(results, report.specSnapshot === generatedArtifacts.SPEC_SNAPSHOT_FILE, "generation-report records spec snapshot");
+  record(results, report.managedManifest === generatedArtifacts.MANIFEST_FILE, "generation-report records managed manifest");
   record(results, report.evaluation && report.evaluation.scoreType === "blueprint-contract", "evaluation score is explicitly blueprint-only");
   record(results, report.evaluation && report.evaluation.runtimeScore === null, "evaluation does not fabricate runtime score");
   record(results, report.evaluation && report.evaluation.outcomeScore === null, "evaluation does not fabricate outcome score");
@@ -291,6 +302,15 @@ function runContractChecks(root) {
     report.verification && sameStringSet(report.verification.acceptanceModes, ["contracts", "execution"]),
     "generation-report declares separate acceptance modes"
   );
+  try {
+    const manifest = generatedArtifacts.readManifest(root, report.skill && report.skill.id);
+    record(results, manifest.specDigest === report.specDigest, "managed manifest matches spec digest");
+    for (const item of generatedArtifacts.inspectManagedFiles(root, manifest)) {
+      record(results, item.status === "unchanged", `managed file matches manifest: ${item.path}`);
+    }
+  } catch (error) {
+    record(results, false, `managed manifest is valid: ${error.message}`);
+  }
 
   for (const scenario of scenarios) {
     record(results, Boolean(scenario.id), `scenario has id: ${scenario.id || "unknown"}`);

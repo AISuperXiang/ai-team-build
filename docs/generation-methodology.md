@@ -103,6 +103,8 @@ docs 和 templates 不能只生成章节标题，必须为每个关键章节补�
 
 生成器会为所有团队保底生成 `decision-log.md`、`risk-register.md`、`role-handoff.md`、`evidence-index.md`、`delivery-summary.md` 和 `workflow-status.json`。规格声明同路径模板时使用领域版本。
 
+工作流阶段中以 `.md` 结尾、但规格未声明模板的产物会获得可执行的通用 fallback 模板。生成物校验器要求每个 Markdown 阶段产物都有模板；高价值领域产物仍应在规格中提供专用内容，不能长期依赖 fallback。
+
 ### 双语 README
 
 - 每个生成团队必须同时包含默认中文 `README.md` 和英文 `README_EN.md`，并提供双向语言链接。
@@ -219,3 +221,27 @@ workspace 校验还会核对角色分区、阶段负责人、产物存在性和 
 
 - 生成物根目录：`evaluation-report.md`
 - 生成摘要：`generation-report.json.evaluation`
+
+## 14. 可复现生成与反馈演进
+
+生成物必须保存 `team-spec.snapshot.json` 和 `generation-manifest.json`。前者是已校验的完整输入，后者记录工厂受管文件的 SHA-256 与大小。
+
+真实任务完成或明确中止后，使用 `assets/templates/iteration-feedback.json` 记录：
+
+- 交付结果和用户接受状态。
+- 返工次数与工作流摩擦。
+- 角色缺失、过载、低价值或 N/A 误判。
+- 证据缺口、能力缺口和建议变更。
+
+聚合反馈后再调整规范：
+
+```bash
+node scripts/summarize-feedback.js --input workspace/<feedback-dir> --json
+node <ai-team-build-root>/scripts/generate-team-skill.js \
+  --spec team-spec.snapshot.json \
+  --output . \
+  --upgrade \
+  --dry-run
+```
+
+升级必须保留 Git、workspace 和未受管文件；受管文件漂移时在写入前阻断。反馈只能支持演进优先级，不能替代业务结果证据。

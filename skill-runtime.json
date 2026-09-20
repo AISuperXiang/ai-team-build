@@ -4,7 +4,7 @@
   "skill": {
     "id": "ai-team-build",
     "name": "AI Team Build Skill",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "entry": "SKILL.md",
     "description": "Builds complete agent-readable AI team skills from a team specification."
   },
@@ -26,7 +26,8 @@
     "readme": "README.md",
     "commands": "commands/team-build.md",
     "validation": "scripts/validate-structure.js",
-    "skillAudit": "scripts/audit-skills.js"
+    "skillAudit": "scripts/audit-skills.js",
+    "generatedUpgrade": "scripts/generate-team-skill.js"
   },
   "install": {
     "packageName": "ai-team-build",
@@ -87,16 +88,18 @@
       "docs/reference-standard.md",
       "docs/generation-methodology.md",
       "docs/team-scoring-rubric.md",
+      "docs/generated-skill-evolution.md",
       "docs/skill-evolution-methodology.md",
       "domain-packs/README.md"
     ],
     "sourceRepository": "https://github.com/AISuperXiang/ai-team-build.git",
     "environmentPolicy": "Run Node scripts from the skill root. Core generation must not require network access or credentials.",
-    "generationPolicy": "Create or review a v2 team-spec.json before generating files. The Agent owns semantic team design; deterministic scripts synthesize, generate, validate, and score. Domain packs enhance known domains, while unknown domains use a controlled value-chain draft. Default output is <skills-root>/<skill.id> unless the spec or command sets another output directory.",
+    "generationPolicy": "Create or review a v2 team-spec.json before generating files. New teams include a spec snapshot and managed-file manifest. Use --upgrade for existing generated teams; it preserves untracked files and blocks on managed-file drift. Default output is <skills-root>/<skill.id> unless the spec or command sets another output directory.",
     "executionPolicy": "Generated teams must select complexity, executionProfile, rolePlan, and target verification level before execution. Every generated team receives decision, risk, handoff, evidence, delivery, and workflow-status governance assets.",
     "roleActivationPolicy": "Treat workflow members as a candidate pool. Only active and consulted roles participate; not_applicable roles require scenario evidence and must be reassessed when scope or risk changes.",
     "verificationPolicy": "Factory validation is V2 contract verification. A generated team's real domain capability starts at V0 and may only advance with task-specific evidence; an A-grade blueprint is not business-outcome certification.",
-    "skillEvolutionPolicy": "For existing Skill audits, run scripts/audit-skills.js before changing the target. The audit is static-only and must not execute target scripts or external side effects. For team skills, distinguish candidate members from active, consulted, and not_applicable roles in rolePlan. Prioritize P0/P1 before P2, run target verification only after environment and side-effect boundaries are confirmed, then re-audit.",
+    "evolutionPolicy": "Generated teams preserve a spec snapshot and managed-file manifest. Aggregate structured task feedback before changing the spec, then use --upgrade so local drift becomes an explicit conflict.",
+    "skillEvolutionPolicy": "For generated teams, aggregate structured task feedback before changing the spec and use --upgrade so local drift becomes an explicit conflict. For existing Skill audits, run scripts/audit-skills.js before changing the target. Prioritize P0/P1 before P2, run confirmed-safe verification, then re-audit.",
     "externalSkillPolicy": "Generated team skills may declare external skills, but installation requires explicit user authorization."
   },
   "privacy": {

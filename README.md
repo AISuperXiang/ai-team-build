@@ -6,7 +6,7 @@
 
 ## 项目简介
 
-`ai-team-build` 不依赖固定岗位表。Agent 先从问题价值链推导团队设计，领域包补充专业知识，确定性脚本负责生成、校验、评分和验收。
+`ai-team-build` 不依赖固定岗位表。Agent 先从问题价值链推导团队设计，领域包补充专业知识，确定性脚本负责生成、校验、评分、验收和无损升级。
 
 ```text
 问题与价值目标
@@ -60,6 +60,8 @@
 | 问题价值建模 | 团队缺少使命、结果、约束和价值指标 | `teamDesign`、`governance` |
 | 按需角色设计 | 固定岗位表导致角色冗余或职责缺失 | 候选角色池、激活条件、`rolePlan` |
 | 团队 Skill 生成 | 手工创建目录容易漏文件和契约 | 完整 Skill 目录、命令、工作流和模板 |
+| 安全演进 | 重新生成会覆盖 Git、workspace 或人工增强 | 规范快照、受管文件 manifest、漂移阻断式升级 |
+| 使用反馈闭环 | 真实任务问题只留在对话和提交历史 | 结构化反馈、聚合优先级、规格升级输入 |
 | 领域能力增强 | 通用团队缺少专业内容 | `domain-packs/` 领域知识与约束 |
 | 质量评分与验收 | 目录完整但内容空心、无法执行 | 评分报告、验收场景、验证证据 |
 | 现有 Skill 审计 | 路由、验证、安全或演进能力存在短板 | 分级发现、审计报告、升级建议 |
@@ -123,6 +125,23 @@ npm run generate -- \
   --dry-run
 ```
 
+### 安全升级已生成团队
+
+```bash
+npm run generate -- \
+  --spec <generated-team>/team-spec.snapshot.json \
+  --output <generated-team> \
+  --upgrade \
+  --dry-run
+
+npm run generate -- \
+  --spec <updated-team-spec.json> \
+  --output <generated-team> \
+  --upgrade
+```
+
+`--upgrade` 会保留 `.git`、workspace 和未受管文件；受管文件存在人工修改时会在写入前阻断。
+
 ### 校验生成物
 
 ```bash
@@ -162,6 +181,7 @@ npm run audit:skills -- --root <skills-root> --output-dir .tmp/skill-audits
 | `/team-build create <团队目标>` | 从目标创建并验证完整团队 Skill |
 | `/team-build from-spec <spec-path>` | 从已有规格生成团队 Skill |
 | `/team-build validate <skill-path>` | 校验一个已生成的团队 Skill |
+| `/team-build upgrade <skill-path> [spec]` | 基于 manifest 安全升级生成团队 |
 | `/team-build elevate <skill-path...>` | 审计并定向升级已有 Skill |
 | `/team-build list-templates` | 查看可用模板和领域包 |
 
@@ -172,6 +192,7 @@ npm run audit:skills -- --root <skills-root> --output-dir .tmp/skill-audits
 /team-build create A 股研究团队 --output <skills-root>/stock-trading-team
 /team-build from-spec examples/product-rd-team.team-spec.json
 /team-build validate <skills-root>/stock-trading-team
+/team-build upgrade <skills-root>/stock-trading-team
 /team-build elevate <skills-root>/ai-work-team <skills-root>/stock-trading-team
 ```
 
@@ -221,7 +242,8 @@ Audit
 
 - `team-spec.json` 是自然语言语义设计和确定性生成之间的中间表示。
 - command 只负责触发和 workflow 路由；workflow `members` 是角色候选池，运行期 `rolePlan` 决定实际参与角色。
-- 新生成 command 不再声明 `members`；旧字段仅作为兼容输入，存在时必须引用有效成员。
+- `0.6.0` 起 command 不声明且不接受 `members`。
+- 每个生成团队保存规范快照和受管文件 manifest，真实任务反馈通过结构化记录回流到下一版规范。
 - `npm run verify:install` 是只读安装校验，`npm test` 是完整生成、验收和发布回归。
 - 物化生成物的测试在系统临时目录运行，并在成功或失败后清理。
 - 更完整的工程规则见 [`AGENTS.md`](./AGENTS.md) 和 [`docs/reference-standard.md`](./docs/reference-standard.md)。
@@ -323,7 +345,11 @@ Audit
 | `external-skills/adapters.json` | 外部能力授权、输入输出、降级和验证方式 |
 | `evaluation-report.md` | 团队评分、短板和能力升级方向 |
 | `generation-report.json` | 生成器名称与版本、生成计划、文件清单、风险控制和验收索引 |
-| `scripts/` | 结构、契约、治理 readiness、真实 workspace、执行验收和辅助脚本 |
+| `team-spec.snapshot.json` | 可复现生成与后续升级的权威规格快照 |
+| `generation-manifest.json` | 受管文件 SHA-256、大小和漂移基线 |
+| `assets/templates/iteration-feedback.json` | 真实任务结果、返工、角色和缺口反馈 |
+| `scripts/` | 结构、契约、治理 readiness、反馈聚合、真实 workspace、执行验收和辅助脚本 |
+| `test/` | 生成团队的治理核心回归测试 |
 
 ## 质量门禁
 
@@ -336,6 +362,7 @@ Audit
 - 高风险领域必须包含免责声明、禁止性承诺、证据规则、置信度和失效条件。
 - 高风险领域必须指定人工责任人，并在无批准时阻断交付或不可逆操作；Agent 自审不能冒充真人批准。
 - 生成物必须通过结构校验、契约校验、治理状态校验和静态 acceptance contracts。
+- 每个工作流阶段声明的 Markdown 产物必须有模板；规格缺少时工厂生成通用 fallback。
 - 场景执行验收必须绑定输入摘要、完整 rolePlan、workspace 产物哈希、门禁、反例断言和 assertion/runner/wrapper；零执行或未知结果不得通过。
 - 终态 claim 必须由确认契约、获授权 invocation、required checks 和适用人工审批共同支持。
 - `verificationLevel` 仅代表流程验证；数据、事实、流程、策略结果和个性化能力分别评级。
@@ -362,7 +389,8 @@ Audit
 - 不在源码、README、SKILL 或生成物中写入本地绝对路径；示例统一使用 `<skills-root>`、`<ai-team-build-root>` 或相对路径。
 - 不写入私有凭证、Token、Cookie、机器名或环境特定路径。
 - 不默认安装 external skills，只允许生成能力目录和 Adapter 契约。
-- 使用 `--overwrite` 前必须确认目标目录由本工具生成，并存在有效的 `generation-report.json`。
+- 维护已有仓库使用 `--upgrade`；它在写入前检查受管文件漂移并保留 Git、workspace 和未受管文件。
+- `--overwrite` 只允许处理有有效 manifest、无 Git、无漂移和无额外文件的可丢弃目录。
 - 高风险团队不得输出确定性承诺，必须配置证据规则和人工复核。
 - 生成器保持离线、确定性且无外部副作用。
 
@@ -393,6 +421,7 @@ ai-team-build/
 
 - 修改规格字段：同步更新 `schemas/team-spec.schema.json`、`docs/spec-authoring-guide.md`、`scripts/validate-team-spec.js`、`scripts/score-team-spec.js` 和 fixture。
 - 修改生成结构：同步更新 `docs/reference-standard.md`、`assets/templates/`、`scripts/generate-team-skill.js`、`scripts/generation-plan.js`、`scripts/template-engine.js` 和 `scripts/validate-generated-skill.js`。
+- 修改升级、manifest 或反馈契约：同步更新 `docs/generated-skill-evolution.md`、`scripts/generated-artifacts.js`、生成器、校验器和发布回归。
 - 修改领域包：同步更新 `domain-packs/`、`schemas/domain-pack.schema.json`、`scripts/validate-domain-packs.js` 和相关示例规格。
 - 修改命令：同步更新 [`commands/team-build.md`](./commands/team-build.md)。
 - 修改 command 契约：同步更新 `scripts/command-contract.js`、命令模板、生成器、内外校验器和发布回归。

@@ -13,3 +13,5 @@
 - `README.md`: Default Simplified Chinese user documentation.
 - `README_EN.md`: Corresponding English user documentation.
 - `SKILL.md`: Agent execution entrypoint.
+- `team-spec.snapshot.json`: Reproducible generation and upgrade specification.
+- `generation-manifest.json`: Managed-file hashes and drift baseline.

@@ -13,8 +13,9 @@
 - `scripts/generate-team-skill.js` 是当前生成真源；`assets/templates/*.tpl` 是公开参考模板，关键契约必须通过校验保持一致。
 - command 只负责触发和 workflow 路由，必需 frontmatter 为 `id`、`title`、`triggers`、`execution_mode`。
 - command 不拥有角色池。workflow `members` 是候选角色池，任务实际参与者由 `rolePlan` 表达。
-- 旧 command 的 `members` 在 `0.5.x` 仅为兼容字段：存在时必须是非空数组且全部引用已声明成员；新生成物不得输出该字段，最早在 `0.6.0` 移除兼容。
+- `0.6.0` 起 command Schema 和校验器拒绝 command-level `members`；迁移时删除该字段，角色池只保留在 workflow。
 - 不新增 command `executor`，除非已有运行时消费者、授权模型和版本化迁移方案。
+- 新生成物必须包含 `team-spec.snapshot.json` 和 `generation-manifest.json`；已有生成团队使用 `--upgrade`，不得删除 Git、workspace 或未受管文件。
 
 ## 安装与验证分层
 
@@ -29,6 +30,7 @@
 - 修改安装方式：同步 `package.json`、`skill-runtime.json`、`scripts/validate-structure.js`、`SKILL.md`、`README.md`、`README_EN.md`。
 - 修改 command 契约：同步 `scripts/command-contract.js`、`commands/team-build.md`、`assets/templates/command.md.tpl`、生成器、内外校验器、质量门禁和发布回归。
 - 修改生成结构：同步 `docs/reference-standard.md`、`scripts/generation-plan.js`、生成器、模板和 `scripts/validate-generated-skill.js`。
+- 修改升级或 manifest：同步 `docs/generated-skill-evolution.md`、`scripts/generated-artifacts.js`、生成器、校验器和发布回归。
 - 修改规格字段：同步 Schema、规格指南、校验器、评分器和 fixture。
 - 不得回退或覆盖工作区中与当前任务无关的未提交变更。
 

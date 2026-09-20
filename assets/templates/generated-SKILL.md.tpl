@@ -31,4 +31,5 @@ description: "{{skill.description}} Use when users invoke {{commands.prefix}} or
 7. Execute：按阶段推进并检查门禁。
 8. Verify：使用结构化结果区分 assertion、runner 和 wrapper，并分别评定数据、事实、流程、策略结果和个性化能力。
 9. Assess：用 `scripts/assess-governance.js` 派生 readiness，禁止手填终态通过。
-10. Deliver：交付价值、证据、风险、验证等级和复盘计划。
+10. Feedback：用 `iteration-feedback.json` 记录返工、角色、证据和能力缺口。
+11. Deliver：交付价值、证据、风险、验证等级和复盘计划。

@@ -6,7 +6,7 @@
 
 ## Overview
 
-`ai-team-build` does not rely on a fixed job roster. The Agent derives the team design from the problem's value chain, domain packs contribute specialized knowledge, and deterministic scripts handle generation, validation, scoring, and acceptance.
+`ai-team-build` does not rely on a fixed job roster. The Agent derives the team design from the problem's value chain, domain packs contribute specialized knowledge, and deterministic scripts handle generation, validation, scoring, acceptance, and safe upgrades.
 
 ```text
 Problem and value goal
@@ -60,6 +60,8 @@ It is usually unnecessary when:
 | Problem-value modeling | The team lacks a mission, outcomes, constraints, or value metrics | `teamDesign`, `governance` |
 | On-demand role design | A fixed roster creates redundant roles or responsibility gaps | Candidate roles, activation rules, `rolePlan` |
 | Team Skill generation | Hand-built directories often miss files or contracts | Complete Skill structure, commands, workflows, templates |
+| Safe evolution | Regeneration can overwrite Git, workspaces, or local enhancements | Spec snapshots, managed-file manifests, drift-blocking upgrades |
+| Usage feedback loop | Real-task problems remain trapped in conversations and commits | Structured feedback, ranked signals, spec upgrade input |
 | Domain enhancement | A generic team lacks specialized content | Domain knowledge and constraints from `domain-packs/` |
 | Scoring and acceptance | A directory is structurally complete but operationally empty | Evaluation report, acceptance scenarios, evidence |
 | Existing Skill audit | Routing, verification, safety, or evolution is weak | Prioritized findings, audit report, upgrade guidance |
@@ -123,6 +125,23 @@ npm run generate -- \
   --dry-run
 ```
 
+### Safely Upgrade a Generated Team
+
+```bash
+npm run generate -- \
+  --spec <generated-team>/team-spec.snapshot.json \
+  --output <generated-team> \
+  --upgrade \
+  --dry-run
+
+npm run generate -- \
+  --spec <updated-team-spec.json> \
+  --output <generated-team> \
+  --upgrade
+```
+
+`--upgrade` preserves `.git`, workspaces, and unmanaged files. It blocks before writing when a managed file has local changes.
+
 ### Validate Generated Output
 
 ```bash
@@ -162,6 +181,7 @@ Use `/team-build` in an Agent / IDE:
 | `/team-build create <team-goal>` | Create and validate a complete team Skill from a goal |
 | `/team-build from-spec <spec-path>` | Generate a team Skill from an existing spec |
 | `/team-build validate <skill-path>` | Validate a generated team Skill |
+| `/team-build upgrade <skill-path> [spec]` | Safely upgrade a generated team from its manifest |
 | `/team-build elevate <skill-path...>` | Audit and selectively upgrade existing Skills |
 | `/team-build list-templates` | List available templates and domain packs |
 
@@ -172,6 +192,7 @@ Examples:
 /team-build create A-share research team --output <skills-root>/stock-trading-team
 /team-build from-spec examples/product-rd-team.team-spec.json
 /team-build validate <skills-root>/stock-trading-team
+/team-build upgrade <skills-root>/stock-trading-team
 /team-build elevate <skills-root>/ai-work-team <skills-root>/stock-trading-team
 ```
 
@@ -221,7 +242,8 @@ Audit
 
 - `team-spec.json` is the intermediate representation between natural-language semantic design and deterministic generation.
 - A command only owns triggers and workflow routing. Workflow `members` define candidate roles, while runtime `rolePlan` selects actual participants.
-- Newly generated commands do not declare `members`; the legacy field is accepted only for compatibility and must reference valid members.
+- Starting with `0.6.0`, commands neither declare nor accept `members`.
+- Every generated team stores a spec snapshot and managed-file manifest; structured task feedback feeds the next spec revision.
 - `npm run verify:install` is the read-only installation check; `npm test` owns complete generation, acceptance, and release regression.
 - Tests that materialize generated Skills run in an isolated system temporary directory and clean it after success or failure.
 - See [`AGENTS.md`](./AGENTS.md) and [`docs/reference-standard.md`](./docs/reference-standard.md) for the complete engineering rules.
@@ -323,7 +345,11 @@ Core structure:
 | `external-skills/adapters.json` | Authorization, inputs, outputs, fallback, and verification for external capabilities |
 | `evaluation-report.md` | Team score, weaknesses, and capability upgrades |
 | `generation-report.json` | Generator name and version, generation plan, file inventory, risk controls, and acceptance index |
-| `scripts/` | Structure, contracts, governance readiness, execution acceptance, and helper scripts |
+| `team-spec.snapshot.json` | Authoritative input for reproducible generation and upgrades |
+| `generation-manifest.json` | Managed-file SHA-256 values, sizes, and drift baseline |
+| `assets/templates/iteration-feedback.json` | Real-task outcomes, rework, role signals, and gaps |
+| `scripts/` | Structure, contracts, governance readiness, feedback aggregation, execution acceptance, and helpers |
+| `test/` | Governance-core regression tests for the generated team |
 
 ## Quality Gates
 
@@ -336,6 +362,7 @@ Core structure:
 - High-risk domains require disclaimers, blocked claims, evidence rules, confidence, and invalidation conditions.
 - High-risk domains require a human owner and must block delivery or irreversible action without approval; an Agent self-review is not human approval.
 - Generated output must pass structure, contract, governance-state, and static acceptance-contract validation.
+- Every Markdown artifact declared by a workflow stage must have a template; the factory creates a generic fallback when the spec omits one.
 - Execution acceptance must bind the input digest, complete role plan, workspace artifact hashes, gates, failure assertions, and distinct assertion/runner/wrapper outcomes; zero execution or unknown results cannot pass.
 - A terminal claim requires a confirmed contract, an authorized invocation, required checks, and any applicable human approval.
 - `verificationLevel` represents workflow verification only; data, facts, workflow, strategy outcomes, and personalization are rated separately.
@@ -362,7 +389,8 @@ Investment-research examples are for research and education only. They are not i
 - Do not write local absolute paths into source, README, SKILL, or generated output. Use `<skills-root>`, `<ai-team-build-root>`, or relative paths.
 - Do not store private credentials, tokens, cookies, machine names, or environment-specific paths.
 - Do not install external Skills by default. Only capability catalogs and Adapter contracts may be generated.
-- Before using `--overwrite`, confirm that the target was created by this tool and contains a valid `generation-report.json`.
+- Use `--upgrade` for maintained repositories; it checks managed-file drift before writing and preserves Git, workspaces, and unmanaged files.
+- `--overwrite` only accepts disposable generated directories with a valid manifest, no Git metadata, no drift, and no extra files.
 - High-risk teams must not make deterministic promises and must define evidence rules and human review.
 - Generators remain offline, deterministic, and free of external side effects.
 
@@ -393,6 +421,7 @@ Common maintenance entrypoints:
 
 - Change spec fields: update `schemas/team-spec.schema.json`, `docs/spec-authoring-guide.md`, `scripts/validate-team-spec.js`, `scripts/score-team-spec.js`, and fixtures.
 - Change generated structure: update `docs/reference-standard.md`, `assets/templates/`, `scripts/generate-team-skill.js`, `scripts/generation-plan.js`, `scripts/template-engine.js`, and `scripts/validate-generated-skill.js`.
+- Change upgrade, manifest, or feedback contracts: update `docs/generated-skill-evolution.md`, `scripts/generated-artifacts.js`, the generator, validators, and release regressions.
 - Change domain packs: update `domain-packs/`, `schemas/domain-pack.schema.json`, `scripts/validate-domain-packs.js`, and related example specs.
 - Change commands: update [`commands/team-build.md`](./commands/team-build.md).
 - Change the command contract: update `scripts/command-contract.js`, the command template, generator, internal and external validators, and release regressions.

@@ -18,6 +18,7 @@ const { validateSpec } = require("./validate-team-spec");
 const { renderScoreMarkdown, scoreSpec } = require("./score-team-spec");
 const { REQUIRED_COMMAND_FIELDS } = require("./command-contract");
 const generationPlan = require("./generation-plan");
+const generatedArtifacts = require("./generated-artifacts");
 const templateEngine = require("./template-engine");
 const { version: GENERATOR_VERSION } = require("../package.json");
 
@@ -148,7 +149,7 @@ function renderGeneratedAgents(spec) {
 ## 修改边界
 
 - 角色、命令、工作流、模板、Schema 或运行时契约变化时，必须同步更新权威规格和生成器。
-- 仓库专属文件和真实任务证据不得被生成器覆盖；先生成到临时目录，再按差异同步。
+- 仓库专属文件和真实任务证据不得被生成器覆盖；更新已生成团队时使用工厂 \`--upgrade\`，受管文件漂移必须先人工裁决。
 - 不得删除或改写用户已有的 workspace、Git 元数据或未提交变更。
 
 ## 执行与证据
@@ -269,8 +270,9 @@ ${workflowRows}
 8. Execute：按阶段产出结论、证据、风险和需决策项。
 9. Verify：结构化记录 assertion、runner、wrapper 和执行数量，并映射 \`V0-V4\`。
 10. Assess：使用 \`scripts/assess-governance.js\` 派生 readiness，禁止手填终态通过。
-11. Score：读取 \`evaluation-report.md\`，结合评分短板给出升级建议。
-12. Deliver：输出最终结论、证据索引、评分、风险和下一步建议。
+11. Feedback：完成或明确中止任务后，按 \`docs/feedback-loop.md\` 记录返工、角色、证据和能力缺口。
+12. Score：读取 \`evaluation-report.md\`，结合评分短板和聚合反馈给出升级建议。
+13. Deliver：输出最终结论、证据索引、评分、风险和下一步建议。
 
 ## 风险控制
 
@@ -312,6 +314,7 @@ ${markdownList(spec.riskControls.evidenceRules)}
 - 角色适用场景变化时同步更新 \`docs/role-activation-methodology.md\`、状态模板和状态 Schema。
 - 执行档位、验证等级或必需门禁变化时同步更新运行方法论、状态 Schema 和验收场景。
 - 修改面向用户的功能、安装方式或命令示例时同步维护 \`README.md\` 与 \`README_EN.md\`。
+- 团队演进先更新 \`team-spec.snapshot.json\`，再由工厂 \`--upgrade\` 应用；不得手工改写 \`generation-manifest.json\` 消除漂移。
 - 修改结构或契约后运行 \`npm test\`。
 `;
 }
@@ -368,6 +371,8 @@ ${spec.skill.id}/
 ├── README_EN.md
 ├── package.json
 ├── skill-runtime.json
+├── team-spec.snapshot.json
+├── generation-manifest.json
 ├── evaluation-report.md
 ├── members/
 ├── workflows/
@@ -378,6 +383,7 @@ ${spec.skill.id}/
 ├── external-skills/
 ├── external-cli/
 ├── workspace/
+├── test/
 └── scripts/
 \`\`\`
 
@@ -399,11 +405,13 @@ ${markdownList(spec.riskControls.blockedClaims)}
 npm test
 npm run acceptance:contracts
 npm run acceptance:execution -- --results workspace/acceptance-results.json
+node scripts/summarize-feedback.js --input workspace/<feedback-dir> --json
 node scripts/assess-governance.js --status workspace/<task>/workflow-status.json --require-ready
 node scripts/validate-workspace.js --status workspace/<task>/workflow-status.json --require-ready --min-score 90
 \`\`\`
 
 \`acceptance:contracts\` 只证明生成契约完整；\`acceptance:execution\` 才核对场景执行结果。
+\`team-spec.snapshot.json\` 与 \`generation-manifest.json\` 用于可复现、可检测漂移的安全升级。
 
 ## 文档职责
 
@@ -446,6 +454,8 @@ ${spec.skill.id}/
 ├── README_EN.md
 ├── package.json
 ├── skill-runtime.json
+├── team-spec.snapshot.json
+├── generation-manifest.json
 ├── evaluation-report.md
 ├── members/
 ├── workflows/
@@ -456,6 +466,7 @@ ${spec.skill.id}/
 ├── external-skills/
 ├── external-cli/
 ├── workspace/
+├── test/
 └── scripts/
 \`\`\`
 
@@ -477,12 +488,14 @@ See [evaluation-report.md](evaluation-report.md) for the total score, grade, dim
 npm test
 npm run acceptance:contracts
 npm run acceptance:execution -- --results workspace/acceptance-results.json
+node scripts/summarize-feedback.js --input workspace/<feedback-dir> --json
 node scripts/assess-governance.js --status workspace/<task>/workflow-status.json --require-ready
 node scripts/validate-workspace.js --status workspace/<task>/workflow-status.json --require-ready --min-score 90
 \`\`\`
 
 \`acceptance:contracts\` proves generated-contract completeness only. Use
 \`acceptance:execution\` to validate observed scenario results.
+\`team-spec.snapshot.json\` and \`generation-manifest.json\` support reproducible, drift-aware upgrades.
 
 ## Document Responsibilities
 
@@ -706,8 +719,9 @@ function renderExecutionProtocol(spec) {
 8. Execute：按阶段推进；实现写入默认由一个负责人拥有，并行评审必须冻结输入和写入边界。
 9. Verify：结构化记录 assertion、runner、wrapper 和执行数量，并映射为 \`V0-V4\`。
 10. Assess：运行 \`scripts/assess-governance.js --status <workflow-status.json> --require-ready\`。
-11. Score：不适用维度标记 \`N/A\`；评分不得抬高验证结论。
-12. Deliver：输出结论、证据、档位、验证等级、价值、决策、风险和下一步。
+11. Feedback：按 \`docs/feedback-loop.md\` 记录返工、角色、证据和能力缺口。
+12. Score：不适用维度标记 \`N/A\`；评分不得抬高验证结论。
+13. Deliver：输出结论、证据、档位、验证等级、价值、决策、风险和下一步。
 
 ## 停止条件
 
@@ -797,6 +811,7 @@ function renderDocsReadme(spec) {
 - \`team-operating-model.md\`
 - \`execution-methodology.md\`
 - \`verification-methodology.md\`
+- \`feedback-loop.md\`
 - \`role-activation-methodology.md\`
 - \`capability-matrix.md\`
 - \`acceptance-scenarios.md\`
@@ -970,6 +985,11 @@ ${markdownList(spec.docs.qualityGates)}
 
 - \`acceptance:contracts\` 只校验静态契约；\`acceptance:execution\` 必须读取结构化场景结果。
 - 场景遗漏、角色分区不完整、产物哈希不符、门禁/反例断言缺失或零执行均失败。
+
+## feedback-loop-gate
+
+- 完成或明确中止的任务使用 \`iteration-feedback.json\` 记录结果、返工、角色信号、摩擦和缺口。
+- 聚合反馈只用于调整演进优先级，不得抬高业务验证等级。
 
 ## human-review-gate
 
@@ -1171,6 +1191,54 @@ function renderAcceptanceResultsTemplate(spec) {
   };
 }
 
+function renderIterationFeedbackTemplate(spec) {
+  return {
+    schemaVersion: "1.0",
+    skillId: spec.skill.id,
+    skillVersion: spec.skill.version,
+    taskId: "replace-with-task-id",
+    workflow: spec.workflows[0].id,
+    scenarioId: null,
+    outcome: "pending",
+    userAcceptance: "not_recorded",
+    reworkCycles: 0,
+    roleSignals: [],
+    friction: [],
+    evidenceGaps: [],
+    missingCapabilities: [],
+    suggestedChanges: [],
+    recordedAt: "1970-01-01T00:00:00.000Z"
+  };
+}
+
+function renderFeedbackLoop(spec) {
+  return `# Feedback Loop
+
+Use task feedback to improve ${spec.skill.name} without treating anecdotal comments as proof of business outcomes.
+
+## Record
+
+1. Copy \`assets/templates/iteration-feedback.json\` into the completed task workspace.
+2. Replace template values with the actual task, workflow, outcome, user acceptance, rework count, role signals, friction, evidence gaps, missing capabilities, and proposed changes.
+3. Keep one record per completed or explicitly abandoned task. Do not record secrets, raw credentials, or private source content.
+
+## Summarize
+
+\`\`\`bash
+node scripts/summarize-feedback.js --input workspace/<feedback-dir> --json
+\`\`\`
+
+The summarizer rejects pending templates, unknown workflows, unknown roles, invalid timestamps, oversized files, and paths outside this Skill. It ranks repeated evidence gaps, missing capabilities, role problems, workflow friction, and rework.
+
+## Apply
+
+- Treat repeated P1 signals as candidate changes to \`team-spec.snapshot.json\`, not automatic truth.
+- Map accepted changes to roles, workflows, templates, data contracts, adapters, or acceptance scenarios.
+- Regenerate with the factory \`--upgrade\` path so modified managed files produce conflicts instead of being overwritten.
+- Re-run generated validation, governance tests, and acceptance contracts after every upgrade.
+`;
+}
+
 function renderExternalSkillsReadme(spec) {
   return `# External Skills
 
@@ -1228,6 +1296,7 @@ workspace/
     ├── risk-register.md
     ├── role-handoff.md
     ├── delivery-summary.md
+    ├── iteration-feedback.json
     └── evidence/
         └── README.md
 \`\`\`
@@ -1237,6 +1306,7 @@ workspace/
 - \`evidence/\` 只保存命令、日志、数据来源、截图说明或人工验收记录，不保存凭据。
 - 终态前运行 \`scripts/validate-workspace.js --status <relative-status> --require-ready --min-score 90\`。
 - 执行验收使用 \`assets/templates/acceptance-results.json\` 建立结果文件，再运行 \`acceptance:execution\`；模板和静态文字不能冒充执行产物。
+- 完成或明确中止后使用 \`assets/templates/iteration-feedback.json\` 记录反馈，并由 \`scripts/summarize-feedback.js\` 聚合演进信号。
 - 人工批准必须记录 \`reviewerType=human\`、复核人、时间和证据；Agent 角色自审不能满足人工门禁。
 `;
 }
@@ -1362,6 +1432,34 @@ function renderCoreGovernanceTemplate(relativePath, spec) {
   return content;
 }
 
+function renderStageArtifactTemplate(relativePath, spec) {
+  const fileName = path.basename(relativePath, ".md");
+  return `# ${kebabToTitle(fileName)}
+
+用于记录 ${spec.skill.name} 工作流阶段声明的 \`${path.basename(relativePath)}\` 产物。
+
+## Context
+
+- 记录任务 ID、工作流、阶段、负责人、输入版本和适用范围。
+- 说明本产物解决的问题、依赖的前置决策和不适用边界。
+
+## Findings
+
+- 每项结论使用稳定 ID，并区分事实、推断、假设和未验证信息。
+- 关联支持证据、反向证据、置信度和失效条件。
+
+## Decisions And Risks
+
+- 记录采用方案、未选方案、影响范围、风险、阻断项和人工责任。
+- 缺少必需输入或证据时保持 blocked 或 partial，不伪造完成。
+
+## Verification And Handoff
+
+- 列出已运行检查、结果、证据 ID、当前验证等级和未覆盖范围。
+- 写明接收角色、下一步动作、完成标准和需要重新评估 rolePlan 的信号。
+`;
+}
+
 function baseSchema(title, required, properties) {
   return {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1409,21 +1507,84 @@ function renderWorkflowSchema(title) {
 }
 
 function renderCommandSchema(title) {
-  return baseSchema(title, REQUIRED_COMMAND_FIELDS, {
+  const schema = baseSchema(title, REQUIRED_COMMAND_FIELDS, {
     id: { type: "string", minLength: 1 },
     title: { type: "string", minLength: 1 },
     triggers: {
       ...stringArraySchema(),
       minItems: 1
     },
-    members: {
-      ...stringArraySchema(),
-      minItems: 1,
-      deprecated: true,
-      description: "Deprecated command-level role hints. Workflow members and rolePlan own role activation."
-    },
     execution_mode: { type: "string", enum: ["sequential", "hybrid"] }
   });
+  schema.additionalProperties = false;
+  return schema;
+}
+
+function renderFeedbackSchema(title) {
+  const stringList = {
+    type: "array",
+    items: { type: "string", minLength: 1 }
+  };
+  const schema = baseSchema(title, [
+    "schemaVersion",
+    "skillId",
+    "skillVersion",
+    "taskId",
+    "workflow",
+    "scenarioId",
+    "outcome",
+    "userAcceptance",
+    "reworkCycles",
+    "roleSignals",
+    "friction",
+    "evidenceGaps",
+    "missingCapabilities",
+    "suggestedChanges",
+    "recordedAt"
+  ], {
+    schemaVersion: { const: "1.0" },
+    skillId: { type: "string", minLength: 1 },
+    skillVersion: { type: "string", minLength: 1 },
+    taskId: { type: "string", minLength: 1 },
+    workflow: { type: "string", minLength: 1 },
+    scenarioId: { type: ["string", "null"] },
+    outcome: { type: "string", enum: ["pending", "delivered", "partial", "blocked", "abandoned"] },
+    userAcceptance: {
+      type: "string",
+      enum: ["not_recorded", "accepted", "changes_requested", "rejected", "not_requested"]
+    },
+    reworkCycles: { type: "integer", minimum: 0 },
+    roleSignals: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["role", "status", "note"],
+        properties: {
+          role: { type: "string", minLength: 1 },
+          status: {
+            type: "string",
+            enum: [
+              "active_valuable",
+              "active_low_value",
+              "missing",
+              "overloaded",
+              "not_applicable_correct",
+              "not_applicable_incorrect"
+            ]
+          },
+          note: { type: "string", minLength: 1 }
+        },
+        additionalProperties: false
+      }
+    },
+    friction: stringList,
+    evidenceGaps: stringList,
+    missingCapabilities: stringList,
+    suggestedChanges: stringList,
+    recordedAt: { type: "string", minLength: 1 }
+  });
+  schema.additionalProperties = false;
+  return schema;
 }
 
 function renderStatusSchema(title) {
@@ -1669,12 +1830,13 @@ function renderRuntimeSchema(title) {
     install: { type: "object" },
     agentHints: {
       type: "object",
-      required: ["readOrder", "executionPolicy", "roleActivationPolicy", "verificationPolicy"],
+      required: ["readOrder", "executionPolicy", "roleActivationPolicy", "verificationPolicy", "evolutionPolicy"],
       properties: {
         readOrder: stringArraySchema(),
         executionPolicy: { type: "string", minLength: 1 },
         roleActivationPolicy: { type: "string", minLength: 1 },
-        verificationPolicy: { type: "string", minLength: 1 }
+        verificationPolicy: { type: "string", minLength: 1 },
+        evolutionPolicy: { type: "string", minLength: 1 }
       }
     }
   });
@@ -1691,6 +1853,8 @@ function renderGeneratedValidateStructureScript(spec) {
     "README.md",
     "README_EN.md",
     "evaluation-report.md",
+    generatedArtifacts.SPEC_SNAPSHOT_FILE,
+    generatedArtifacts.MANIFEST_FILE,
     "package.json",
     "skill-runtime.json",
     "commands/README.md",
@@ -1702,12 +1866,14 @@ function renderGeneratedValidateStructureScript(spec) {
     "docs/team-operating-model.md",
     "docs/execution-methodology.md",
     "docs/verification-methodology.md",
+    "docs/feedback-loop.md",
     "docs/role-activation-methodology.md",
     "docs/capability-matrix.md",
     "docs/acceptance-scenarios.md",
     "docs/integrations/data-contracts.md",
     "assets/templates/workflow-status.json",
     "assets/templates/acceptance-results.json",
+    "assets/templates/iteration-feedback.json",
     ...generationPlan.CORE_GOVERNANCE_TEMPLATE_FILES,
     "members/README.md",
     "workflows/README.md",
@@ -1721,9 +1887,13 @@ function renderGeneratedValidateStructureScript(spec) {
     "external-cli/README.md",
     "workspace/README.md",
     "scripts/run-acceptance-scenarios.js",
+    "scripts/generated-artifacts.js",
     "scripts/governance-core.js",
     "scripts/assess-governance.js",
     "scripts/validate-workspace.js",
+    "scripts/summarize-feedback.js",
+    "test/governance-core.test.js",
+    "schemas/feedback.schema.json",
     "generation-report.json",
     ...expectedMembers,
     ...expectedWorkflows
@@ -1745,6 +1915,7 @@ const requiredDirs = ${json([
     "members",
     "schemas",
     "scripts",
+    "test",
     "workflows",
     "workspace"
   ])};
@@ -1776,6 +1947,7 @@ function renderGeneratedValidateContractsScript(spec) {
 const fs = require("fs");
 const path = require("path");
 const { assessGovernanceState } = require("./governance-core");
+const generatedArtifacts = require("./generated-artifacts");
 const ROOT = path.resolve(__dirname, "..");
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage"]);
 const riskControls = ${json(spec.riskControls)};
@@ -1832,6 +2004,7 @@ function parseStageRows(content) {
     if (cells.length < 5) continue;
     rows.push({
       owner: cells[1],
+      artifacts: cells[3].split(/<br>|[,，]/).map((artifact) => artifact.trim()).filter(Boolean),
       gates: cells[4].split(/[,，]/).map((gate) => gate.trim()).filter(Boolean)
     });
   }
@@ -1873,6 +2046,25 @@ const runtime = parseJson("skill-runtime.json");
 record(Boolean(runtime && runtime.agentHints && runtime.agentHints.executionPolicy), "runtime defines execution policy");
 record(Boolean(runtime && runtime.agentHints && runtime.agentHints.roleActivationPolicy), "runtime defines role activation policy");
 record(Boolean(runtime && runtime.agentHints && runtime.agentHints.verificationPolicy), "runtime defines verification boundary");
+record(Boolean(runtime && runtime.agentHints && runtime.agentHints.evolutionPolicy), "runtime defines feedback and evolution policy");
+const packageJson = parseJson("package.json");
+record(Boolean(packageJson && packageJson.scripts && packageJson.scripts["test:governance"]), "package runs governance regression tests");
+record(Boolean(packageJson && packageJson.scripts && packageJson.scripts["feedback:summary"]), "package exposes feedback summarization");
+const generationReport = parseJson("generation-report.json");
+record(generationReport && generationReport.skill && path.basename(ROOT) === generationReport.skill.id, "generated directory name matches skill id");
+record(generationReport && generationReport.specSnapshot === generatedArtifacts.SPEC_SNAPSHOT_FILE, "generation report records spec snapshot");
+record(generationReport && generationReport.managedManifest === generatedArtifacts.MANIFEST_FILE, "generation report records managed manifest");
+if (generationReport) {
+  try {
+    const manifest = generatedArtifacts.readManifest(ROOT, generationReport.skill && generationReport.skill.id);
+    record(manifest.specDigest === generationReport.specDigest, "managed manifest matches spec digest");
+    for (const item of generatedArtifacts.inspectManagedFiles(ROOT, manifest)) {
+      record(item.status === "unchanged", "managed file matches manifest: " + item.path);
+    }
+  } catch (error) {
+    record(false, "managed manifest is valid (" + error.message + ")");
+  }
+}
 const commandContent = read(commandFile);
 const command = parseFrontmatter(commandContent);
 record(Boolean(command), commandFile + " has frontmatter");
@@ -1882,12 +2074,7 @@ for (const field of requiredCommandFields) {
     commandFile + " has required field: " + field
   );
 }
-if (command && Object.prototype.hasOwnProperty.call(command, "members")) {
-  record(Array.isArray(command.members) && command.members.length > 0, commandFile + " deprecated members is a non-empty array");
-  for (const member of Array.isArray(command.members) ? command.members : []) {
-    record(memberIds.includes(member), commandFile + " deprecated members references existing member: " + member);
-  }
-}
+record(command && !Object.prototype.hasOwnProperty.call(command, "members"), commandFile + " does not declare command-level members");
 for (const workflowId of workflowIds) {
   record(commandContent.includes(workflowId), commandFile + " references workflow id: " + workflowId);
 }
@@ -1907,6 +2094,12 @@ for (const item of rolePlan || []) {
 const governanceAssessment = assessGovernanceState(workflowStatus);
 record(governanceAssessment.valid, "workflow-status governance control is structurally valid");
 record(governanceAssessment.readiness === "review", "initial workflow-status governance readiness is review");
+const feedbackTemplate = parseJson("assets/templates/iteration-feedback.json");
+record(feedbackTemplate && feedbackTemplate.schemaVersion === "1.0", "feedback template has schemaVersion 1.0");
+record(feedbackTemplate && generationReport && feedbackTemplate.skillId === generationReport.skill.id, "feedback template matches skill id");
+record(feedbackTemplate && generationReport && feedbackTemplate.skillVersion === generationReport.skill.version, "feedback template matches skill version");
+record(feedbackTemplate && feedbackTemplate.outcome === "pending", "feedback template starts pending");
+record(feedbackTemplate && feedbackTemplate.userAcceptance === "not_recorded", "feedback template does not fabricate acceptance");
 const allRiskText = [skill, read("docs/quality-gates.md"), read("docs/quality-rubrics.md")].join("\\n");
 for (const item of riskControls.requiredDisclaimers || []) record(allRiskText.includes(item), "risk disclaimer present: " + item);
 for (const item of riskControls.blockedClaims || []) record(allRiskText.includes(item), "blocked claim present: " + item);
@@ -1920,6 +2113,14 @@ for (const workflowFile of listMarkdownFiles("workflows").filter((file) => !file
   const stageOwners = new Set(stageRows.map((row) => row.owner));
   const stageGates = new Set(stageRows.flatMap((row) => row.gates));
   for (const owner of stageOwners) record(((data && data.members) || []).includes(owner), workflowFile + " stage owner is a candidate member: " + owner);
+  for (const artifact of stageRows.flatMap((row) => row.artifacts)) {
+    if (!artifact.endsWith(".md")) continue;
+    record(
+      /^[A-Za-z0-9][A-Za-z0-9._-]*\\.md$/.test(artifact) &&
+        fs.existsSync(path.join(ROOT, "assets", "templates", artifact)),
+      workflowFile + " stage artifact has a template: " + artifact
+    );
+  }
   for (const gate of (data && data.quality_gates) || []) record(stageGates.has(gate), workflowFile + " declared quality gate appears in stage rows: " + gate);
 }
 for (const file of [
@@ -1936,14 +2137,14 @@ for (const schemaFile of [
   "schemas/workflow.schema.json",
   "schemas/command.schema.json",
   "schemas/status.schema.json",
+  "schemas/feedback.schema.json",
   "schemas/skill-runtime.schema.json"
 ]) {
   const schema = parseJson(schemaFile);
   record(schemaIsDeep(schema), schemaFile + " has required fields and properties");
   if (schemaFile === "schemas/command.schema.json") {
     record(requiredCommandFields.every((field) => schema.required.includes(field)), "command schema requires route fields");
-    record(!schema.required.includes("members"), "command schema does not require deprecated members");
-    record(Boolean(schema.properties.members && schema.properties.members.deprecated === true), "command schema marks members as deprecated");
+    record(schema.additionalProperties === false && !Object.prototype.hasOwnProperty.call(schema.properties, "members"), "command schema rejects command-level members");
   }
   if (schemaFile === "schemas/status.schema.json") {
     record(Array.isArray(schema && schema.required) && schema.required.includes("rolePlan"), "status schema requires rolePlan");
@@ -1956,6 +2157,7 @@ for (const schemaFile of [
     const agentHints = schema && schema.properties && schema.properties.agentHints;
     record(Array.isArray(schema && schema.required) && schema.required.includes("agentHints"), "runtime schema requires agentHints");
     record(Boolean(agentHints && agentHints.properties && agentHints.properties.verificationPolicy), "runtime schema defines verificationPolicy");
+    record(Boolean(agentHints && agentHints.properties && agentHints.properties.evolutionPolicy), "runtime schema defines evolutionPolicy");
   }
 }
 const adapters = parseJson("external-skills/adapters.json");
@@ -1972,7 +2174,8 @@ for (const adapter of ((adapters && adapters.adapters) || [])) {
   record(Boolean(adapter.verifyCommand), "adapter " + (adapter.id || "unknown") + " has verifyCommand");
 }
 for (const file of collectFiles(ROOT)) {
-  const relativePath = path.relative(ROOT, file);
+  const relativePath = path.relative(ROOT, file).split(path.sep).join("/");
+  if (["team-spec.snapshot.json", "generation-manifest.json"].includes(relativePath)) continue;
   const content = fs.readFileSync(file, "utf8");
   record(!content.includes(String.fromCharCode(123, 123)), relativePath + " has no unresolved template opener");
   record(!content.includes(String.fromCharCode(125, 125)), relativePath + " has no unresolved template closer");
@@ -2061,9 +2264,11 @@ function renderPackageJson(spec) {
       acceptance: "npm run acceptance:contracts",
       "acceptance:contracts": "node scripts/run-acceptance-scenarios.js . --mode contracts",
       "acceptance:execution": "node scripts/run-acceptance-scenarios.js . --mode execution",
+      "feedback:summary": "node scripts/summarize-feedback.js",
       "skills:list": "node scripts/list-external-skills.js",
       "skills:install": "node scripts/install-external-skills.js",
-      test: "npm run validate:structure && npm run validate:contracts && npm run validate:governance && npm run acceptance:contracts"
+      "test:governance": "node --test test/governance-core.test.js",
+      test: "npm run validate:structure && npm run validate:contracts && npm run validate:governance && npm run test:governance && npm run acceptance:contracts"
     },
     license: "MIT"
   };
@@ -2103,6 +2308,8 @@ function renderRuntime(spec, commandFile) {
         "README.md",
         "README_EN.md",
         "evaluation-report.md",
+        generatedArtifacts.SPEC_SNAPSHOT_FILE,
+        generatedArtifacts.MANIFEST_FILE,
         "package.json",
         "skill-runtime.json",
         "members/",
@@ -2113,7 +2320,8 @@ function renderRuntime(spec, commandFile) {
         "external-skills/",
         "schemas/",
         "assets/templates/",
-        "scripts/"
+        "scripts/",
+        "test/"
       ],
       methods: [
         {
@@ -2142,12 +2350,14 @@ function renderRuntime(spec, commandFile) {
         "docs/team-operating-model.md",
         "docs/execution-methodology.md",
         "docs/role-activation-methodology.md",
-        "docs/verification-methodology.md"
+        "docs/verification-methodology.md",
+        "docs/feedback-loop.md"
       ],
       environmentPolicy: "Run Node scripts from the skill root. Core workflows must not require credentials or external services.",
       executionPolicy: "Select complexity, executionProfile, rolePlan, and target verification level before execution. Terminal claims require a confirmed contract, authorized invocation, required checks, trustworthy execution results, and any required approval.",
       roleActivationPolicy: "Treat workflow members as a candidate pool. Record active, consulted, or not_applicable participation with scenario evidence in workflow-status.json.rolePlan before loading role details.",
       verificationPolicy: "Factory contract validation is V2. Execution acceptance requires a structured scenario result envelope with input binding, artifacts, gates, failure assertions, and separate assertion/runner/wrapper outcomes. Real domain capability starts at V0.",
+      evolutionPolicy: "Record completed-task feedback with iteration-feedback.json, summarize repeated signals, update team-spec.snapshot.json, and use the factory --upgrade path to preserve local work.",
       externalSkillPolicy: "Only install external skills from external-skills/catalog.json after explicit user instruction or approval."
     },
     privacy: {
@@ -2170,6 +2380,7 @@ function createStandardDirs(outputDir) {
     "members",
     "schemas",
     "scripts",
+    "test",
     "workflows",
     "workspace"
   ]) {
@@ -2182,9 +2393,12 @@ function writeGeneratedSkill(spec, outputDir, options) {
 
   const commandFile = `commands/${commandFileName(spec.commands.prefix)}.md`;
   const score = scoreSpec(spec);
+  const generatedAt = new Date().toISOString();
+  const plannedFiles = generationPlan.plannedFilesForSpec(spec);
   const writeRelative = (relativePath, content) => writeFile(safeJoin(outputDir, relativePath), content);
   const writeRelativeJson = (relativePath, value) => writeJson(safeJoin(outputDir, relativePath), value);
 
+  writeRelativeJson(generatedArtifacts.SPEC_SNAPSHOT_FILE, spec);
   writeRelative("SKILL.md", renderGeneratedSkillMd(spec));
   writeRelative("AGENTS.md", renderGeneratedAgents(spec));
   writeRelative(".npmignore", "workspace/*/\n.tmp/\nnode_modules/\n");
@@ -2216,6 +2430,7 @@ function writeGeneratedSkill(spec, outputDir, options) {
   writeRelative("docs/team-operating-model.md", renderTeamOperatingModel(spec));
   writeRelative("docs/execution-methodology.md", renderExecutionMethodology(spec));
   writeRelative("docs/verification-methodology.md", renderVerificationMethodology(spec));
+  writeRelative("docs/feedback-loop.md", renderFeedbackLoop(spec));
   writeRelative("docs/capability-matrix.md", templateEngine.renderCapabilityMatrix(spec));
   writeRelative("docs/acceptance-scenarios.md", templateEngine.renderAcceptanceScenarios(spec));
   writeRelative("docs/integrations/data-contracts.md", templateEngine.renderDataContracts(spec));
@@ -2233,11 +2448,15 @@ function writeGeneratedSkill(spec, outputDir, options) {
   for (const templatePath of generationPlan.coreGovernanceTemplateFiles(spec)) {
     writeRelative(templatePath, renderCoreGovernanceTemplate(templatePath, spec));
   }
+  for (const templatePath of generationPlan.stageArtifactTemplateFiles(spec)) {
+    writeRelative(templatePath, renderStageArtifactTemplate(templatePath, spec));
+  }
   for (const template of spec.templates) {
     writeRelative(generationPlan.relativeTemplatePath(template), templateEngine.renderTemplateArtifact(template));
   }
   writeRelativeJson("assets/templates/workflow-status.json", renderWorkflowStatus(spec));
   writeRelativeJson("assets/templates/acceptance-results.json", renderAcceptanceResultsTemplate(spec));
+  writeRelativeJson("assets/templates/iteration-feedback.json", renderIterationFeedbackTemplate(spec));
 
   writeRelative("external-skills/README.md", renderExternalSkillsReadme(spec));
   writeRelativeJson("external-skills/catalog.json", {
@@ -2259,26 +2478,36 @@ function writeGeneratedSkill(spec, outputDir, options) {
   writeRelativeJson("schemas/workflow.schema.json", renderWorkflowSchema(`${spec.skill.name} Workflow`));
   writeRelativeJson("schemas/command.schema.json", renderCommandSchema(`${spec.skill.name} Command`));
   writeRelativeJson("schemas/status.schema.json", renderStatusSchema(`${spec.skill.name} Status`));
+  writeRelativeJson("schemas/feedback.schema.json", renderFeedbackSchema(`${spec.skill.name} Iteration Feedback`));
   writeRelativeJson("schemas/skill-runtime.schema.json", renderRuntimeSchema(`${spec.skill.name} Runtime`));
 
   writeRelative("scripts/validate-structure.js", renderGeneratedValidateStructureScript(spec));
   writeRelative("scripts/validate-contracts.js", renderGeneratedValidateContractsScript(spec));
+  writeRelative("scripts/generated-artifacts.js", fs.readFileSync(path.join(__dirname, "generated-artifacts.js"), "utf8"));
   writeRelative("scripts/governance-core.js", fs.readFileSync(path.join(__dirname, "governance-core.js"), "utf8"));
   writeRelative("scripts/assess-governance.js", fs.readFileSync(path.join(__dirname, "assess-governance.js"), "utf8"));
   writeRelative("scripts/validate-workspace.js", fs.readFileSync(path.join(__dirname, "validate-workspace.js"), "utf8"));
+  writeRelative("scripts/summarize-feedback.js", fs.readFileSync(path.join(__dirname, "summarize-feedback.js"), "utf8"));
   writeRelative("scripts/run-acceptance-scenarios.js", fs.readFileSync(path.join(__dirname, "run-acceptance-scenarios.js"), "utf8"));
   writeRelative("scripts/list-external-skills.js", renderListExternalSkillsScript(spec));
   writeRelative("scripts/install-external-skills.js", renderInstallExternalSkillsScript(spec));
   if (spec.scripts.includeContextBuilder) {
     writeRelative("scripts/build-context.js", renderBuildContextScript(spec));
   }
+  writeRelative(
+    "test/governance-core.test.js",
+    fs.readFileSync(path.join(REPO_ROOT, "assets", "templates", "governance-core.test.js.tpl"), "utf8")
+  );
 
   const report = {
     generator: "ai-team-build",
     generatorVersion: GENERATOR_VERSION,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     specSource: portablePath(options.specPath),
-    outputPath: portablePath(outputDir),
+    specSnapshot: generatedArtifacts.SPEC_SNAPSHOT_FILE,
+    specDigest: generatedArtifacts.sha256File(path.join(outputDir, generatedArtifacts.SPEC_SNAPSHOT_FILE)),
+    managedManifest: generatedArtifacts.MANIFEST_FILE,
+    outputPath: portablePath(options.reportOutputDir || outputDir),
     dryRun: Boolean(options.dryRun),
     skill: spec.skill,
     commandFile,
@@ -2324,9 +2553,14 @@ function writeGeneratedSkill(spec, outputDir, options) {
     acceptanceScenarios: spec.acceptanceScenarios || [],
     dataContracts: spec.dataContracts || [],
     capabilityMatrix: spec.capabilityMatrix || [],
-    plannedFiles: generationPlan.plannedFilesForSpec(spec)
+    plannedFiles
   };
   writeRelativeJson("generation-report.json", report);
+  generatedArtifacts.writeManifest(outputDir, plannedFiles, {
+    generatorVersion: GENERATOR_VERSION,
+    skillId: spec.skill.id,
+    generatedAt
+  });
   return report;
 }
 
@@ -2353,6 +2587,9 @@ function assertSafeOutputPath(outputDir, skillId) {
   if (blockedPaths.includes(resolved) || isSameOrAncestor(resolved, REPO_ROOT)) {
     throw new Error(`Refusing unsafe output directory: ${resolved}`);
   }
+  if (fs.existsSync(resolved) && fs.lstatSync(resolved).isSymbolicLink()) {
+    throw new Error(`Refusing symbolic-link output directory: ${resolved}`);
+  }
   if (path.basename(resolved) !== skillId) {
     throw new Error(`Output directory must end with skill id "${skillId}": ${resolved}`);
   }
@@ -2362,7 +2599,11 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   const specPath = args.spec || args._[0];
   if (!specPath) {
-    console.error("Usage: node scripts/generate-team-skill.js --spec <team-spec.json> [--output <dir>] [--dry-run] [--overwrite]");
+    console.error("Usage: node scripts/generate-team-skill.js --spec <team-spec.json> [--output <dir>] [--dry-run] [--upgrade|--overwrite]");
+    process.exit(1);
+  }
+  if (args.upgrade && args.overwrite) {
+    console.error("Use either --upgrade or --overwrite, not both.");
     process.exit(1);
   }
 
@@ -2393,18 +2634,61 @@ function main() {
     console.error(error.message);
     process.exit(1);
   }
-  if (args["dry-run"]) {
+  if (args["dry-run"] && !args.upgrade) {
     console.log(JSON.stringify(generationPlan.buildGenerationPlan(spec, outputDir, absoluteSpecPath, { dryRun: true }), null, 2));
     return;
+  }
+  if (args.upgrade && !fs.existsSync(outputDir)) {
+    console.error(`Cannot upgrade a missing output directory: ${outputDir}`);
+    process.exit(1);
   }
 
   const allowOverwrite = Boolean(args.overwrite) || spec.output.overwritePolicy === "overwrite";
   if (fs.existsSync(outputDir)) {
-    if (!allowOverwrite) {
-      console.error(`Output directory already exists: ${outputDir}. Pass --overwrite to replace it.`);
+    if (!allowOverwrite && !args.upgrade) {
+      console.error(`Output directory already exists: ${outputDir}. Pass --upgrade for a drift-aware update.`);
       process.exit(1);
     }
-    fs.rmSync(outputDir, { recursive: true, force: true });
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ai-team-build-candidate-"));
+    const candidateDir = path.join(tempRoot, spec.skill.id);
+    try {
+      writeGeneratedSkill(spec, candidateDir, {
+        dryRun: Boolean(args["dry-run"]),
+        specPath: absoluteSpecPath,
+        reportOutputDir: outputDir
+      });
+      if (allowOverwrite && !args.upgrade) {
+        generatedArtifacts.assertReplaceableGeneratedDirectory(outputDir, spec.skill.id);
+      }
+      const plan = generatedArtifacts.planUpgrade(outputDir, candidateDir, spec.skill.id);
+      if (args["dry-run"]) {
+        console.log(JSON.stringify(plan, null, 2));
+        if (plan.conflicts.length > 0) process.exitCode = 1;
+        return;
+      }
+      if (plan.conflicts.length > 0) {
+        console.error(JSON.stringify(plan, null, 2));
+        console.error(`Upgrade blocked by ${plan.conflicts.length} managed-file conflict(s).`);
+        process.exitCode = 1;
+        return;
+      }
+      generatedArtifacts.applyUpgrade(outputDir, candidateDir, plan);
+      const report = readJson(path.join(outputDir, "generation-report.json"));
+      console.log(`Upgraded ${spec.skill.id} at ${outputDir}`);
+      console.log(`Created: ${plan.create.length}`);
+      console.log(`Updated: ${plan.update.length}`);
+      console.log(`Deleted: ${plan.delete.length}`);
+      console.log(`Preserved: ${plan.preserved.length}`);
+      console.log(`Members: ${report.counts.members}`);
+      console.log(`Workflows: ${report.counts.workflows}`);
+      return;
+    } catch (error) {
+      console.error(error.message);
+      process.exitCode = 1;
+      return;
+    } finally {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
   }
 
   const report = writeGeneratedSkill(spec, outputDir, {

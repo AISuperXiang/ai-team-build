@@ -266,6 +266,177 @@ function testGeneratedFixtureRunnerCleansTemporaryDirectories() {
   assert(fs.readdirSync(failureTmpRoot).length === 0, "fixture runner cleans temporary output after failure");
 }
 
+function testGeneratedManifestAndSafeUpgrade() {
+  const dir = tmpDir("safe-upgrade");
+  const spec = readFixtureSpec();
+  const specPath = path.join(dir, "spec.json");
+  const outputDir = path.join(dir, spec.skill.id);
+  writeJson(specPath, spec);
+
+  const generate = runNode(["scripts/generate-team-skill.js", "--spec", specPath, "--output", outputDir]);
+  assert(generate.status === 0, "generator creates a manifest-backed team", generate.stdout + generate.stderr);
+  const snapshot = JSON.parse(fs.readFileSync(path.join(outputDir, "team-spec.snapshot.json"), "utf8"));
+  const manifest = JSON.parse(fs.readFileSync(path.join(outputDir, "generation-manifest.json"), "utf8"));
+  const report = JSON.parse(fs.readFileSync(path.join(outputDir, "generation-report.json"), "utf8"));
+  assert(snapshot.skill.id === spec.skill.id, "generated team contains its validated spec snapshot");
+  assert(manifest.skillId === spec.skill.id && manifest.files.length > 0, "generated manifest records managed files");
+  assert(report.specDigest === manifest.specDigest, "generation report and manifest bind the same spec");
+  assert(
+    manifest.files.some((file) => file.path === "test/governance-core.test.js"),
+    "generated manifest tracks governance regression tests"
+  );
+
+  writeText(path.join(outputDir, ".git", "keep"), "preserve git metadata");
+  writeText(path.join(outputDir, "workspace", "task-1", "notes.md"), "preserve task evidence");
+  const upgradedSpec = readFixtureSpec();
+  upgradedSpec.skill.version = "0.3.1";
+  writeJson(specPath, upgradedSpec);
+  const packageBeforePreview = fs.readFileSync(path.join(outputDir, "package.json"), "utf8");
+  const preview = runNode([
+    "scripts/generate-team-skill.js",
+    "--spec",
+    specPath,
+    "--output",
+    outputDir,
+    "--upgrade",
+    "--dry-run"
+  ]);
+  assert(preview.status === 0, "upgrade dry-run produces a conflict-free plan", preview.stdout + preview.stderr);
+  const previewPlan = JSON.parse(preview.stdout);
+  assert(previewPlan.kind === "ai-team-build.upgrade-plan", "upgrade dry-run returns a structured plan");
+  assert(
+    fs.readFileSync(path.join(outputDir, "package.json"), "utf8") === packageBeforePreview,
+    "upgrade dry-run does not modify the target"
+  );
+
+  const upgrade = runNode([
+    "scripts/generate-team-skill.js",
+    "--spec",
+    specPath,
+    "--output",
+    outputDir,
+    "--upgrade"
+  ]);
+  assert(upgrade.status === 0, "upgrade applies to an unchanged generated baseline", upgrade.stdout + upgrade.stderr);
+  const upgradedPackage = JSON.parse(fs.readFileSync(path.join(outputDir, "package.json"), "utf8"));
+  assert(upgradedPackage.version === "0.3.1", "upgrade refreshes managed files");
+  assert(fs.existsSync(path.join(outputDir, ".git", "keep")), "upgrade preserves Git metadata");
+  assert(fs.existsSync(path.join(outputDir, "workspace", "task-1", "notes.md")), "upgrade preserves workspace evidence");
+
+  writeText(path.join(outputDir, "README.md"), "locally modified managed file");
+  upgradedSpec.skill.version = "0.3.2";
+  writeJson(specPath, upgradedSpec);
+  const packageBeforeConflict = fs.readFileSync(path.join(outputDir, "package.json"), "utf8");
+  const conflict = runNode([
+    "scripts/generate-team-skill.js",
+    "--spec",
+    specPath,
+    "--output",
+    outputDir,
+    "--upgrade"
+  ]);
+  assert(conflict.status !== 0, "upgrade blocks on managed-file drift");
+  assert(conflict.stderr.includes("managed-file-modified"), "upgrade reports the conflicting managed file");
+  assert(
+    fs.readFileSync(path.join(outputDir, "package.json"), "utf8") === packageBeforeConflict,
+    "conflicted upgrade performs no partial writes"
+  );
+
+  const overwrite = runNode([
+    "scripts/generate-team-skill.js",
+    "--spec",
+    specPath,
+    "--output",
+    outputDir,
+    "--overwrite"
+  ]);
+  assert(overwrite.status !== 0, "overwrite refuses a maintained Git repository");
+
+  const legacyDir = path.join(dir, "legacy", spec.skill.id);
+  const legacyGenerate = runNode([
+    "scripts/generate-team-skill.js",
+    "--spec",
+    specPath,
+    "--output",
+    legacyDir
+  ]);
+  assert(legacyGenerate.status === 0, "legacy safety fixture generates successfully");
+  fs.unlinkSync(path.join(legacyDir, "generation-manifest.json"));
+  writeText(path.join(legacyDir, "local-notes.md"), "must not be deleted");
+  const legacyOverwrite = runNode([
+    "scripts/generate-team-skill.js",
+    "--spec",
+    specPath,
+    "--output",
+    legacyDir,
+    "--overwrite"
+  ]);
+  assert(legacyOverwrite.status !== 0, "overwrite refuses a legacy directory without a manifest");
+  assert(fs.existsSync(path.join(legacyDir, "local-notes.md")), "refused legacy overwrite preserves local files");
+}
+
+function testGeneratedFeedbackAndGovernanceTests() {
+  const dir = tmpDir("feedback-loop");
+  const { outputDir, spec } = generateFixture(dir);
+  const governance = runNode(["--test", "test/governance-core.test.js"], { cwd: outputDir });
+  assert(governance.status === 0, "generated governance regression tests pass", governance.stdout + governance.stderr);
+
+  const feedbackDir = path.join(outputDir, "workspace", "feedback");
+  const base = {
+    schemaVersion: "1.0",
+    skillId: spec.skill.id,
+    skillVersion: spec.skill.version,
+    workflow: spec.workflows[0].id,
+    scenarioId: null,
+    outcome: "delivered",
+    userAcceptance: "changes_requested",
+    reworkCycles: 1,
+    roleSignals: [{
+      role: spec.members[0].id,
+      status: "overloaded",
+      note: "The role owned both analysis and final review."
+    }],
+    friction: ["handoff-required-reformatting"],
+    evidenceGaps: ["source-freshness"],
+    missingCapabilities: ["independent-evidence-review"],
+    suggestedChanges: ["add-an-independent-review-stage"]
+  };
+  writeJson(path.join(feedbackDir, "task-1.json"), {
+    ...base,
+    taskId: "task-1",
+    recordedAt: "2026-09-20T10:00:00Z"
+  });
+  writeJson(path.join(feedbackDir, "task-2.json"), {
+    ...base,
+    taskId: "task-2",
+    userAcceptance: "accepted",
+    recordedAt: "2026-09-20T11:00:00Z"
+  });
+  const summary = runNode([
+    "scripts/summarize-feedback.js",
+    "--input",
+    "workspace/feedback",
+    "--json"
+  ], { cwd: outputDir });
+  assert(summary.status === 0, "generated feedback summarizer accepts completed task records", summary.stdout + summary.stderr);
+  const report = JSON.parse(summary.stdout);
+  assert(report.summary.records === 2, "feedback summary counts task records");
+  assert(
+    report.priorities.some((item) =>
+      item.priority === "P1" &&
+      item.signal === "missing-capability:independent-evidence-review" &&
+      item.count === 2),
+    "feedback summary promotes repeated capability gaps"
+  );
+  const pendingTemplate = runNode([
+    "scripts/summarize-feedback.js",
+    "--input",
+    "assets/templates/iteration-feedback.json",
+    "--json"
+  ], { cwd: outputDir });
+  assert(pendingTemplate.status !== 0, "feedback summarizer rejects the unfilled pending template");
+}
+
 function testGeneratedCommandContractCompatibility() {
   const dir = tmpDir("command-contract");
   const spec = readFixtureSpec();
@@ -282,29 +453,22 @@ function testGeneratedCommandContractCompatibility() {
   const commandTemplate = fs.readFileSync(path.join(ROOT, "assets", "templates", "command.md.tpl"), "utf8");
 
   assert(!/^members:/m.test(command), "new generated command omits command-level members");
-  assert(!commandSchema.required.includes("members"), "command schema does not require deprecated members");
-  assert(commandSchema.properties.members.deprecated === true, "command schema marks members as deprecated");
+  assert(commandSchema.additionalProperties === false, "command schema rejects unknown fields");
+  assert(!Object.prototype.hasOwnProperty.call(commandSchema.properties, "members"), "command schema removes command-level members");
   assert(
     JSON.stringify(frontmatterKeys(command)) === JSON.stringify(frontmatterKeys(commandTemplate)),
     "command template and inline renderer expose the same frontmatter fields"
   );
 
-  const validLegacyCommand = command.replace(
+  const legacyCommand = command.replace(
     /^execution_mode:/m,
     `members:\n  - ${JSON.stringify(spec.members[0].id)}\nexecution_mode:`
   );
-  writeText(commandPath, validLegacyCommand);
-  const validExternal = runNode(["scripts/validate-generated-skill.js", outputDir]);
-  assert(validExternal.status === 0, "external validator accepts valid legacy command members", validExternal.stdout + validExternal.stderr);
-  const validInternal = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
-  assert(validInternal.status === 0, "generated validator accepts valid legacy command members", validInternal.stdout + validInternal.stderr);
-
-  const invalidLegacyCommand = validLegacyCommand.replace(spec.members[0].id, "unknown-command-member");
-  writeText(commandPath, invalidLegacyCommand);
-  const invalidExternal = runNode(["scripts/validate-generated-skill.js", outputDir]);
-  assert(invalidExternal.status !== 0, "external validator rejects unknown legacy command member");
-  const invalidInternal = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
-  assert(invalidInternal.status !== 0, "generated validator rejects unknown legacy command member");
+  writeText(commandPath, legacyCommand);
+  const legacyExternal = runNode(["scripts/validate-generated-skill.js", outputDir]);
+  assert(legacyExternal.status !== 0, "external validator rejects removed command members");
+  const legacyInternal = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
+  assert(legacyInternal.status !== 0, "generated validator rejects removed command members");
 
   const missingTitleCommand = command.replace(/^title:.*\n/m, "");
   writeText(commandPath, missingTitleCommand);
@@ -355,6 +519,22 @@ function testUnsafeOutputDirectoryRejected() {
   writeJson(specPath, spec);
   const dryRun = runNode(["scripts/generate-team-skill.js", "--spec", specPath, "--dry-run"]);
   assert(dryRun.status !== 0, "generator rejects unsafe output directory before dry-run or overwrite", dryRun.stdout + dryRun.stderr);
+
+  const symlinkSpec = readFixtureSpec();
+  writeJson(specPath, symlinkSpec);
+  const realTarget = path.join(dir, "real-target");
+  const linkedOutput = path.join(dir, symlinkSpec.skill.id);
+  fs.mkdirSync(realTarget, { recursive: true });
+  fs.symlinkSync(realTarget, linkedOutput);
+  const symlinkResult = runNode([
+    "scripts/generate-team-skill.js",
+    "--spec",
+    specPath,
+    "--output",
+    linkedOutput,
+    "--dry-run"
+  ]);
+  assert(symlinkResult.status !== 0, "generator rejects a symbolic-link output directory");
 }
 
 function testExternalSkillAdaptersBlockAGrade() {
@@ -471,6 +651,12 @@ function testGeneratedStatusCarriesExecutionContract() {
     "delivery-summary.md"
   ]) {
     assert(fs.existsSync(path.join(outputDir, "assets", "templates", file)), `generated team includes governance template: ${file}`);
+  }
+  for (const file of ["execution-plan.md", "strategy-review.md", "risk-review.md", "review-report.md"]) {
+    assert(
+      fs.existsSync(path.join(outputDir, "assets", "templates", file)),
+      `generated team fills missing stage artifact template: ${file}`
+    );
   }
   const riskRegister = fs.readFileSync(path.join(outputDir, "assets", "templates", "risk-register.md"), "utf8");
   assert(riskRegister.includes("# 风险台账"), "domain template overrides the generic governance fallback");
@@ -895,6 +1081,8 @@ function main() {
   testUnsafeOutputDirectoryRejected();
   testQuotedFrontmatterGeneration();
   testGeneratedFixtureRunnerCleansTemporaryDirectories();
+  testGeneratedManifestAndSafeUpgrade();
+  testGeneratedFeedbackAndGovernanceTests();
   testGeneratedCommandContractCompatibility();
   testUnmatchedDomainPackFallsBackToDraft();
   testExternalSkillAdaptersBlockAGrade();

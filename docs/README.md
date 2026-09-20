@@ -21,4 +21,5 @@
 4. `risk-control-standard.md`
 5. `team-scoring-rubric.md`
 6. `generated-skill-quality-gates.md`
-7. `skill-evolution-methodology.md`
+7. `generated-skill-evolution.md`
+8. `skill-evolution-methodology.md`

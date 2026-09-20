@@ -7,6 +7,7 @@ const {
   REQUIRED_COMMAND_FIELDS
 } = require("./command-contract");
 const { assessGovernanceState } = require("./governance-core");
+const generatedArtifacts = require("./generated-artifacts");
 
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage", ".tmp"]);
 const TEXT_EXTENSIONS = new Set([".md", ".json", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx"]);
@@ -105,6 +106,7 @@ function parseStageRows(content) {
     rows.push({
       stage: cells[0],
       owner: cells[1],
+      artifacts: cells[3].split(/<br>|[,，]/).map((artifact) => artifact.trim()).filter(Boolean),
       gates: cells[4].split(/[,，]/).map((gate) => gate.trim()).filter(Boolean)
     });
   }
@@ -172,6 +174,7 @@ function main() {
     "members",
     "schemas",
     "scripts",
+    "test",
     "workflows",
     "workspace"
   ];
@@ -183,6 +186,8 @@ function main() {
     "README.md",
     "README_EN.md",
     "evaluation-report.md",
+    generatedArtifacts.SPEC_SNAPSHOT_FILE,
+    generatedArtifacts.MANIFEST_FILE,
     "package.json",
     "skill-runtime.json",
     "commands/README.md",
@@ -193,12 +198,14 @@ function main() {
     "docs/team-operating-model.md",
     "docs/execution-methodology.md",
     "docs/verification-methodology.md",
+    "docs/feedback-loop.md",
     "docs/role-activation-methodology.md",
     "docs/capability-matrix.md",
     "docs/acceptance-scenarios.md",
     "docs/integrations/data-contracts.md",
     "assets/templates/workflow-status.json",
     "assets/templates/acceptance-results.json",
+    "assets/templates/iteration-feedback.json",
     "assets/templates/decision-log.md",
     "assets/templates/risk-register.md",
     "assets/templates/role-handoff.md",
@@ -216,7 +223,9 @@ function main() {
     "scripts/governance-core.js",
     "scripts/assess-governance.js",
     "scripts/validate-workspace.js",
+    "scripts/summarize-feedback.js",
     "scripts/run-acceptance-scenarios.js",
+    "test/governance-core.test.js",
     "workflows/README.md",
     "workflows/route-table.md",
     "workflows/execution-protocol.md",
@@ -263,6 +272,9 @@ function main() {
     record(Boolean(runtime.agentHints && runtime.agentHints.executionPolicy), "runtime defines execution policy");
     record(Boolean(runtime.agentHints && runtime.agentHints.roleActivationPolicy), "runtime defines role activation policy");
     record(Boolean(runtime.agentHints && runtime.agentHints.verificationPolicy), "runtime defines verification boundary");
+    record(Boolean(runtime.agentHints && runtime.agentHints.evolutionPolicy), "runtime defines feedback and evolution policy");
+    record(Boolean(packageJson.scripts && packageJson.scripts["test:governance"]), "package runs governance regression tests");
+    record(Boolean(packageJson.scripts && packageJson.scripts["feedback:summary"]), "package exposes feedback summarization");
     const runtimeText = JSON.stringify(runtime);
     const localPathPlaceholder = ["/path", "to"].join("/");
     const platformCopyCommand = ["cp", "-R"].join(" ");
@@ -278,7 +290,11 @@ function main() {
 
   if (report) {
     record(report.generator === "ai-team-build", "generation report records generator id");
+    record(report.skill && path.basename(root) === report.skill.id, "generated directory name matches skill id");
     record(/^\d+\.\d+\.\d+$/.test(String(report.generatorVersion || "")), "generation report records semantic generator version");
+    record(report.specSnapshot === generatedArtifacts.SPEC_SNAPSHOT_FILE, "generation report records the spec snapshot");
+    record(/^[a-f0-9]{64}$/.test(String(report.specDigest || "")), "generation report records the spec digest");
+    record(report.managedManifest === generatedArtifacts.MANIFEST_FILE, "generation report records the managed manifest");
     record(Boolean(report.evaluation), "generation-report.json has evaluation summary");
     record(report.evaluation && report.evaluation.scoreType === "blueprint-contract", "evaluation identifies blueprint-contract score type");
     record(typeof (report.evaluation && report.evaluation.totalScore) === "number", "evaluation has numeric totalScore");
@@ -302,6 +318,19 @@ function main() {
       if (report.counts && report.counts.externalSkills > 0) {
         record(report.counts.externalAdapters > 0, "A-grade generated skill with external skills has capability adapters");
       }
+    }
+    if (existsFile(root, generatedArtifacts.SPEC_SNAPSHOT_FILE)) {
+      const specDigest = generatedArtifacts.sha256File(path.join(root, generatedArtifacts.SPEC_SNAPSHOT_FILE));
+      record(specDigest === report.specDigest, "spec snapshot digest matches generation report");
+    }
+    try {
+      const manifest = generatedArtifacts.readManifest(root, report.skill && report.skill.id);
+      record(manifest.specDigest === report.specDigest, "managed manifest matches the spec digest");
+      for (const item of generatedArtifacts.inspectManagedFiles(root, manifest)) {
+        record(item.status === "unchanged", `managed file matches manifest: ${item.path}`);
+      }
+    } catch (error) {
+      record(false, `managed manifest is valid (${error.message})`);
     }
   }
 
@@ -376,6 +405,14 @@ function main() {
       record(memberIds.has(owner), `${workflowFile} stage owner references existing member: ${owner}`);
       record(((hasValidFrontmatter(data) && data.members) || []).includes(owner), `${workflowFile} stage owner is declared in workflow members: ${owner}`);
     }
+    for (const artifact of stageRows.flatMap((row) => row.artifacts)) {
+      if (!artifact.endsWith(".md")) continue;
+      record(
+        /^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/.test(artifact) &&
+          existsFile(root, `assets/templates/${artifact}`),
+        `${workflowFile} stage artifact has a template: ${artifact}`
+      );
+    }
     for (const gate of (hasValidFrontmatter(data) && data.quality_gates) || []) {
       record(stageGates.has(gate), `${workflowFile} declared quality gate appears in stage rows: ${gate}`);
     }
@@ -406,15 +443,10 @@ function main() {
           `${report.commandFile} has required route field: ${field}`
         );
       }
-      if (hasValidFrontmatter(command) && Object.prototype.hasOwnProperty.call(command, "members")) {
-        record(
-          Array.isArray(command.members) && command.members.length > 0,
-          `${report.commandFile} deprecated members is a non-empty array`
-        );
-        for (const member of Array.isArray(command.members) ? command.members : []) {
-          record(memberIds.has(member), `${report.commandFile} deprecated members references existing member: ${member}`);
-        }
-      }
+      record(
+        hasValidFrontmatter(command) && !Object.prototype.hasOwnProperty.call(command, "members"),
+        `${report.commandFile} does not declare command-level members`
+      );
       for (const workflowId of workflowIds) {
         record(commandContent.includes(workflowId), `${report.commandFile} references workflow id: ${workflowId}`);
       }
@@ -424,6 +456,7 @@ function main() {
   const allTextFiles = collectFiles(root);
   for (const file of allTextFiles) {
     const relativePath = path.relative(root, file);
+    if ([generatedArtifacts.SPEC_SNAPSHOT_FILE, generatedArtifacts.MANIFEST_FILE].includes(relativePath)) continue;
     const content = fs.readFileSync(file, "utf8");
     record(!content.includes("{{"), `${relativePath} has no unresolved template opener`);
     record(!content.includes("}}"), `${relativePath} has no unresolved template closer`);
@@ -445,6 +478,7 @@ function main() {
     "schemas/workflow.schema.json",
     "schemas/command.schema.json",
     "schemas/status.schema.json",
+    "schemas/feedback.schema.json",
     "schemas/skill-runtime.schema.json"
   ]) {
     const schema = existsFile(root, schemaFile) ? parseJson(root, schemaFile) : null;
@@ -455,12 +489,13 @@ function main() {
         "command schema requires route fields"
       );
       record(
-        Array.isArray(schema && schema.required) && !schema.required.includes("members"),
-        "command schema does not require deprecated members"
-      );
-      record(
-        Boolean(schema && schema.properties && schema.properties.members && schema.properties.members.deprecated === true),
-        "command schema marks members as deprecated"
+        Boolean(
+          schema &&
+          schema.additionalProperties === false &&
+          schema.properties &&
+          !Object.prototype.hasOwnProperty.call(schema.properties, "members")
+        ),
+        "command schema rejects command-level members"
       );
     }
     if (schemaFile === "schemas/status.schema.json") {
@@ -502,6 +537,10 @@ function main() {
         Boolean(agentHints && agentHints.properties && agentHints.properties.verificationPolicy),
         "runtime schema defines verificationPolicy"
       );
+      record(
+        Boolean(agentHints && agentHints.properties && agentHints.properties.evolutionPolicy),
+        "runtime schema defines evolutionPolicy"
+      );
     }
   }
 
@@ -519,6 +558,15 @@ function main() {
     const governanceAssessment = assessGovernanceState(status);
     record(governanceAssessment.valid, "workflow status governance control is structurally valid");
     record(governanceAssessment.readiness === "review", "initial workflow status governance readiness is review");
+  }
+
+  if (existsFile(root, "assets/templates/iteration-feedback.json") && report) {
+    const feedback = parseJson(root, "assets/templates/iteration-feedback.json");
+    record(feedback && feedback.schemaVersion === "1.0", "feedback template has schemaVersion 1.0");
+    record(feedback && feedback.skillId === report.skill.id, "feedback template matches skill id");
+    record(feedback && feedback.skillVersion === report.skill.version, "feedback template matches skill version");
+    record(feedback && feedback.outcome === "pending", "feedback template starts pending");
+    record(feedback && feedback.userAcceptance === "not_recorded", "feedback template does not fabricate acceptance");
   }
 
   if (existsFile(root, "external-skills/adapters.json")) {
