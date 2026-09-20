@@ -131,6 +131,9 @@ A级蓝图的验收场景还必须声明预期 workflow、执行档位、最低�
 
 - `scripts/validate-structure.js`
 - `scripts/validate-contracts.js`
+- `scripts/governance-core.js`
+- `scripts/assess-governance.js`
+- `scripts/validate-workspace.js`
 - `scripts/run-acceptance-scenarios.js`
 
 ## 10. 推导外部能力 Adapter
@@ -159,19 +162,44 @@ A级蓝图的验收场景还必须声明预期 workflow、执行档位、最低�
 
 ## 12. 验收执行
 
-生成后必须运行 acceptance runner：
+生成后先运行静态 acceptance contract：
 
 ```bash
-node <generated>/scripts/run-acceptance-scenarios.js <generated>
+node <generated>/scripts/run-acceptance-scenarios.js <generated> --mode contracts
 ```
 
-验收场景会检查：
+它只检查：
 
 - `acceptanceScenarios[].expectedOutputs` 是否存在。
 - `mustPassGates` 是否在生成物中出现。
 - `failureExamples` 是否被落盘。
 - 结构化 workflow、profile、验证等级和 rolePlan 是否有效。
 - 风险声明、禁止性承诺和证据规则是否可追踪。
+
+真实场景执行后，将结果按 `assets/templates/acceptance-results.json` 写入 workspace，再运行：
+
+```bash
+node <generated>/scripts/run-acceptance-scenarios.js <generated> \
+  --mode execution \
+  --results workspace/acceptance-results.json
+```
+
+执行验收会绑定场景输入摘要，并核对场景全集、角色分区、产物哈希、必过门禁、
+失败样例断言、验证等级和 assertion/runner/wrapper。零执行、未知结果或模板回退均失败。
+静态契约通过不能表述为场景执行通过。
+
+每个任务的 `workflow-status.json` 还必须通过治理评估：
+
+```bash
+node <generated>/scripts/validate-workspace.js \
+  --status workspace/<task>/workflow-status.json \
+  --require-ready \
+  --min-score 90
+```
+
+终态 readiness 由确认契约、授权 invocation、required checks、可信运行结果和适用审批派生。
+workspace 校验还会核对角色分区、阶段负责人、产物存在性和 evidence ID。
+人工批准必须记录真人身份、时间和证据；Agent 角色复核不能满足人工门禁。
 
 ## 13. 评分与验证边界
 

@@ -3,7 +3,17 @@
 const fs = require("fs");
 const path = require("path");
 
-const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage", ".next", ".turbo", ".tmp"]);
+const SKIP_DIRS = new Set([
+  ".git",
+  "node_modules",
+  "dist",
+  "build",
+  "coverage",
+  ".next",
+  ".turbo",
+  ".tmp",
+  "workspace"
+]);
 const TEXT_EXTENSIONS = new Set([".md", ".json", ".js", ".cjs", ".mjs", ".ts", ".tsx", ".jsx", ".yaml", ".yml"]);
 
 function parseArgs(argv) {

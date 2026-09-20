@@ -419,15 +419,46 @@ function validateSpec(spec, options = {}) {
             seenRoles.add(role);
           }
         }
+        reporter.record(
+          seenRoles.size === memberIds.size && [...memberIds].every((role) => seenRoles.has(role)),
+          `acceptance ${id} expectedRolePlan partitions every declared member`
+        );
+        const participatingRoles = new Set([
+          ...(scenario.expectedRolePlan.active || []),
+          ...(scenario.expectedRolePlan.consulted || [])
+        ]);
         if (scenario.expectedWorkflow && workflowIds.has(scenario.expectedWorkflow)) {
           const expectedWorkflow = workflows.find((workflow) => workflow.id === scenario.expectedWorkflow);
-          for (const role of [
-            ...(scenario.expectedRolePlan.active || []),
-            ...(scenario.expectedRolePlan.consulted || [])
-          ]) {
+          for (const role of participatingRoles) {
             reporter.record(
               (expectedWorkflow.members || []).includes(role),
               `acceptance ${id} participating role is a candidate in expected workflow: ${role}`
+            );
+          }
+        }
+        if ((scenario.mustPassGates || []).includes("human-review-gate")) {
+          for (const output of scenario.expectedOutputs || []) {
+            const outputId = path.posix.basename(output, path.posix.extname(output));
+            const owners = members
+              .filter((member) => (member.primary_outputs || []).includes(outputId))
+              .map((member) => member.id);
+            reporter.record(owners.length > 0, `acceptance ${id} expected output has a declared owner: ${output}`);
+            reporter.record(
+              owners.some((owner) => participatingRoles.has(owner)),
+              `acceptance ${id} expected output has a participating owner: ${output}`
+            );
+          }
+          for (const gate of scenario.mustPassGates || []) {
+            const owners = members
+              .filter((member) => (member.quality_gates || []).includes(gate))
+              .map((member) => member.id);
+            if (gate === "human-review-gate" && spec.governance && spec.governance.humanReview) {
+              owners.push(spec.governance.humanReview.accountableRole);
+            }
+            reporter.record(owners.length > 0, `acceptance ${id} required gate has a declared owner: ${gate}`);
+            reporter.record(
+              owners.some((owner) => participatingRoles.has(owner)),
+              `acceptance ${id} required gate has a participating owner: ${gate}`
             );
           }
         }

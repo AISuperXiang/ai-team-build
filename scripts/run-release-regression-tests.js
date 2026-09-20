@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+const crypto = require("crypto");
 const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
@@ -8,6 +9,7 @@ const { validateSpec } = require("./validate-team-spec");
 const { scoreSpec } = require("./score-team-spec");
 
 const ROOT = path.resolve(__dirname, "..");
+const GENERATOR_VERSION = require(path.join(ROOT, "package.json")).version;
 
 function tmpDir(name) {
   return fs.mkdtempSync(path.join(os.tmpdir(), `ai-team-build-${name}-`));
@@ -54,6 +56,90 @@ function frontmatterKeys(content) {
     .filter(Boolean)
     .map((item) => item[1])
     .sort();
+}
+
+function sha256(content) {
+  return crypto.createHash("sha256").update(content).digest("hex");
+}
+
+function generateFixture(dir) {
+  const spec = readFixtureSpec();
+  const specPath = path.join(dir, "spec.json");
+  const outputDir = path.join(dir, spec.skill.id);
+  writeJson(specPath, spec);
+  const generate = runNode(["scripts/generate-team-skill.js", "--spec", specPath, "--output", outputDir, "--overwrite"]);
+  assert(generate.status === 0, "fixture generation succeeds", generate.stdout + generate.stderr);
+  return { outputDir, spec };
+}
+
+function buildExecutionResults(outputDir, report) {
+  const runs = report.acceptanceScenarios.map((scenario) => {
+    const producedArtifacts = scenario.expectedOutputs.map((artifact) => {
+      const relativePath = path.posix.join("workspace", "acceptance", scenario.id, artifact);
+      const content = [
+        `Scenario: ${scenario.id}`,
+        `Input: ${scenario.input}`,
+        ...(report.riskControls.requiredDisclaimers || [])
+      ].join("\n");
+      writeText(path.join(outputDir, relativePath), content);
+      return {
+        artifact,
+        path: relativePath,
+        sha256: sha256(content)
+      };
+    });
+    const run = {
+      scenarioId: scenario.id,
+      inputDigest: sha256(scenario.input),
+      workflow: scenario.expectedWorkflow,
+      executionProfile: scenario.expectedProfile,
+      verificationLevel: scenario.minimumVerificationLevel,
+      rolePlan: scenario.expectedRolePlan,
+      producedArtifacts,
+      passedGates: scenario.mustPassGates,
+      failureAssertions: scenario.failureExamples.map((example) => ({
+        example,
+        observed: false,
+        evidenceRef: `scenario:${scenario.id}:failure:${sha256(example).slice(0, 12)}`
+      })),
+      result: {
+        assertion: "pass",
+        executed: 1,
+        runner: { status: "passed", exitCode: 0 },
+        wrapper: { status: "not_applicable", exitCode: null }
+      },
+      evidenceRefs: [`scenario:${scenario.id}:result`]
+    };
+    if ((scenario.mustPassGates || []).includes("human-review-gate")) {
+      run.humanApproval = {
+        reviewerType: "human",
+        reviewerId: "fixture-reviewer",
+        evidenceRef: `scenario:${scenario.id}:human-approval`,
+        reviewedAt: "2026-09-20T10:00:00Z"
+      };
+    }
+    return run;
+  });
+  return {
+    schemaVersion: "1.0",
+    skillId: report.skill.id,
+    generatorVersion: report.generatorVersion,
+    runs
+  };
+}
+
+function runExecutionAcceptance(outputDir, results) {
+  const resultsPath = path.join(outputDir, "workspace", "acceptance-results.json");
+  writeJson(resultsPath, results);
+  return runNode([
+    path.join(outputDir, "scripts", "run-acceptance-scenarios.js"),
+    outputDir,
+    "--mode",
+    "execution",
+    "--results",
+    "workspace/acceptance-results.json",
+    "--json"
+  ]);
 }
 
 function testAcceptanceRejectsFakeDirectory() {
@@ -133,6 +219,10 @@ function testQuotedFrontmatterGeneration() {
   assert(generate.status === 0, "generator accepts quoted description", generate.stdout + generate.stderr);
   const skillMd = fs.readFileSync(path.join(outputDir, "SKILL.md"), "utf8");
   assert(!skillMd.includes("description: \"A \"quoted\""), "generated SKILL.md escapes quoted frontmatter");
+  assert(
+    skillMd.includes("## 最小加载矩阵") && skillMd.includes("不一次性加载全部成员"),
+    "generated SKILL.md defines progressive loading"
+  );
   const readme = fs.readFileSync(path.join(outputDir, "README.md"), "utf8");
   const readmeEn = fs.readFileSync(path.join(outputDir, "README_EN.md"), "utf8");
   assert(readme.includes("[English](./README_EN.md)"), "generated README links to README_EN");
@@ -141,6 +231,7 @@ function testQuotedFrontmatterGeneration() {
   const runtime = JSON.parse(fs.readFileSync(path.join(outputDir, "skill-runtime.json"), "utf8"));
   assert(runtime.install.requiredFiles.includes("README_EN.md"), "generated runtime requires README_EN.md");
   const generationReport = JSON.parse(fs.readFileSync(path.join(outputDir, "generation-report.json"), "utf8"));
+  assert(generationReport.generatorVersion === GENERATOR_VERSION, "generation report records current generator version");
   assert(generationReport.plannedFiles.includes("README_EN.md"), "generation report plans README_EN.md");
   const validate = runNode(["scripts/validate-generated-skill.js", outputDir]);
   assert(validate.status === 0, "generated validator accepts escaped frontmatter", validate.stdout + validate.stderr);
@@ -298,6 +389,26 @@ function testCandidateMemberMayNotOwnStaticStage() {
   assert(reporter.failedCount() === 0, "candidate member may be consulted or not_applicable without owning a static stage");
 }
 
+function testAcceptanceRequiresParticipatingOwners() {
+  const spec = readFixtureSpec();
+  const scenario = spec.acceptanceScenarios[0];
+  scenario.expectedRolePlan.active = scenario.expectedRolePlan.active.filter((role) => role !== "risk-manager");
+  scenario.expectedRolePlan.notApplicable.push("risk-manager");
+  const reporter = validateSpec(spec);
+  assert(
+    reporter.results.some((result) =>
+      !result.ok &&
+      result.message.includes("expected output has a participating owner: risk-register.md")),
+    "acceptance rejects a risk artifact whose owner is not participating"
+  );
+  assert(
+    reporter.results.some((result) =>
+      !result.ok &&
+      result.message.includes("required gate has a participating owner: human-review-gate")),
+    "acceptance rejects a human-review gate whose accountable role is not participating"
+  );
+}
+
 function testVenturePackMatchesEntrepreneurGoal() {
   const dir = tmpDir("venture-pack");
   const specPath = path.join(dir, "venture-spec.json");
@@ -368,6 +479,348 @@ function testGeneratedStatusCarriesExecutionContract() {
   const report = JSON.parse(fs.readFileSync(path.join(outputDir, "generation-report.json"), "utf8"));
   assert(report.verification.factoryVerificationLevel === "V2", "generation report records factory V2");
   assert(report.verification.generatedTeamVerificationLevel === "V0", "generation report preserves team V0");
+}
+
+function testGeneratedGovernanceEnforcesReadiness() {
+  const dir = tmpDir("governance-readiness");
+  const { outputDir } = generateFixture(dir);
+  const statusPath = path.join(outputDir, "assets", "templates", "workflow-status.json");
+  const initial = JSON.parse(fs.readFileSync(statusPath, "utf8"));
+  assert(Boolean(initial.governanceControl), "generated status contains governanceControl");
+  assert(fs.existsSync(path.join(outputDir, "scripts", "governance-core.js")), "generated team includes governance core");
+  assert(fs.existsSync(path.join(outputDir, "scripts", "assess-governance.js")), "generated team includes governance assessor");
+
+  const bypass = JSON.parse(JSON.stringify(initial));
+  bypass.verificationLevel = "V4";
+  bypass.verificationScopes.workflow = "V4";
+  bypass.stages.forEach((stage) => { stage.status = "completed"; });
+  bypass.governanceControl.completion.claim = "accepted";
+  writeJson(statusPath, bypass);
+  const bypassResult = runNode([
+    "scripts/assess-governance.js",
+    "--status",
+    "assets/templates/workflow-status.json",
+    "--require-ready",
+    "--json"
+  ], { cwd: outputDir });
+  assert(bypassResult.status !== 0, "governance blocks an unsupported terminal claim");
+  const bypassReport = JSON.parse(bypassResult.stdout);
+  assert(
+    ["ACTIVE_CONTRACT_REQUIRED", "REQUIRED_CHECKS_MISSING", "VERIFICATION_LEVEL_EXCEEDS_EVIDENCE", "HUMAN_APPROVAL_REQUIRED"]
+      .every((code) => bypassReport.diagnostics.some((item) => item.code === code)),
+    "governance reports contract, checks, verification, and approval gaps"
+  );
+  const bypassContractValidation = runNode(["scripts/validate-contracts.js"], { cwd: outputDir });
+  assert(bypassContractValidation.status !== 0, "generated contract validation rejects a tampered terminal template");
+
+  const valid = JSON.parse(JSON.stringify(initial));
+  valid.workflow = valid.stages[0].workflowId;
+  valid.verificationLevel = "V2";
+  valid.verificationScopes.workflow = "V2";
+  valid.stages.forEach((stage) => { stage.status = "completed"; });
+  Object.assign(valid.governanceControl, {
+    taskId: "task-1",
+    authorizedActions: ["read", "run_verification", "deliver"],
+    activeContractRevision: "contract-1",
+    currentInvocationId: "invocation-1",
+    contracts: [{
+      revision: "contract-1",
+      status: "confirmed",
+      sourceRef: "decision:contract-1",
+      checkIds: ["check-1"]
+    }],
+    checks: [{
+      id: "check-1",
+      required: true,
+      minimumVerificationLevel: "V2",
+      evidenceRunIds: ["run-1"]
+    }],
+    invocations: [{
+      id: "invocation-1",
+      operation: "start",
+      allowedActions: ["read", "run_verification", "deliver"],
+      authorizationRef: "user:implementation-request",
+      previousInvocationId: null
+    }],
+    verificationRuns: [{
+      id: "run-1",
+      invocationId: "invocation-1",
+      checkIds: ["check-1"],
+      verificationLevel: "V2",
+      result: {
+        assertion: "pass",
+        executed: 1,
+        runner: { status: "passed", exitCode: 0 },
+        wrapper: { status: "not_applicable", exitCode: null }
+      },
+      evidenceRefs: ["evidence:run-1"]
+    }],
+    approvals: [{
+      id: "approval-1",
+      contractRevision: "contract-1",
+      role: valid.governanceControl.humanReviewPolicy.accountableRole,
+      reviewerType: "human",
+      reviewerId: "reviewer-1",
+      status: "approved",
+      evidenceRef: "approval:1",
+      reviewedAt: "2026-09-20T10:00:00Z"
+    }],
+    completion: { claim: "accepted" }
+  });
+  writeJson(statusPath, valid);
+  const accepted = runNode([
+    "scripts/assess-governance.js",
+    "--status",
+    "assets/templates/workflow-status.json",
+    "--require-ready",
+    "--json"
+  ], { cwd: outputDir });
+  assert(accepted.status === 0, "governance accepts a fully evidenced terminal claim", accepted.stdout + accepted.stderr);
+
+  for (const role of valid.rolePlan) {
+    if (["delivery-manager", "risk-manager"].includes(role.role)) {
+      role.mode = "active";
+      role.stages = ["Input", "Risk Boundary"];
+      role.reason = "Owns the selected workflow stage.";
+    }
+  }
+  const workspaceDir = path.join(outputDir, "workspace", "validated-task");
+  writeJson(path.join(workspaceDir, "workflow-status.json"), valid);
+  writeText(path.join(workspaceDir, "research-brief.md"), "# Research brief\n\nEvidence: E-01\n");
+  writeText(path.join(workspaceDir, "risk-register.md"), "# Risk register\n\nEvidence: E-01\n");
+  writeText(path.join(workspaceDir, "evidence-index.md"), "# Evidence\n\n| ID | Source |\n| --- | --- |\n| E-01 | fixture |\n");
+  const workspaceAccepted = runNode([
+    "scripts/validate-workspace.js",
+    "--status",
+    "workspace/validated-task/workflow-status.json",
+    "--require-ready",
+    "--min-score",
+    "90",
+    "--json"
+  ], { cwd: outputDir });
+  assert(workspaceAccepted.status === 0, "workspace validation accepts a complete governed task", workspaceAccepted.stdout + workspaceAccepted.stderr);
+
+  const invalidOwner = JSON.parse(JSON.stringify(valid));
+  invalidOwner.rolePlan.find((role) => role.role === "risk-manager").mode = "not_applicable";
+  invalidOwner.rolePlan.find((role) => role.role === "risk-manager").stages = [];
+  writeJson(path.join(workspaceDir, "workflow-status.json"), invalidOwner);
+  const invalidOwnerResult = runNode([
+    "scripts/validate-workspace.js",
+    "--status",
+    "workspace/validated-task/workflow-status.json",
+    "--json"
+  ], { cwd: outputDir });
+  assert(invalidOwnerResult.status !== 0, "workspace validation rejects a not_applicable stage owner");
+
+  const missingOutcome = JSON.parse(JSON.stringify(valid));
+  missingOutcome.verificationScopes.strategyOutcome = "V1";
+  writeJson(path.join(workspaceDir, "workflow-status.json"), missingOutcome);
+  const missingOutcomeResult = runNode([
+    "scripts/validate-workspace.js",
+    "--status",
+    "workspace/validated-task/workflow-status.json",
+    "--json"
+  ], { cwd: outputDir });
+  assert(missingOutcomeResult.status !== 0, "workspace validation rejects unsupported strategy outcome verification");
+
+  writeJson(path.join(workspaceDir, "workflow-status.json"), valid);
+  writeText(path.join(workspaceDir, "evidence", "raw.json"), "{\"value\":1}\n");
+  writeText(
+    path.join(workspaceDir, "evidence-index.md"),
+    "# Evidence\n\n| ID | Source |\n| --- | --- |\n| E-01 | [fixture](evidence/raw.json) SHA-256 `0000000000000000000000000000000000000000000000000000000000000000` |\n"
+  );
+  const invalidDigestResult = runNode([
+    "scripts/validate-workspace.js",
+    "--status",
+    "workspace/validated-task/workflow-status.json",
+    "--json"
+  ], { cwd: outputDir });
+  assert(invalidDigestResult.status !== 0, "workspace validation rejects a mismatched evidence snapshot digest");
+
+  writeJson(statusPath, valid);
+  const zeroExecution = JSON.parse(JSON.stringify(valid));
+  zeroExecution.governanceControl.verificationRuns[0].result.executed = 0;
+  writeJson(statusPath, zeroExecution);
+  const zeroResult = runNode([
+    "scripts/assess-governance.js",
+    "--status",
+    "assets/templates/workflow-status.json",
+    "--require-ready",
+    "--json"
+  ], { cwd: outputDir });
+  assert(zeroResult.status !== 0, "governance rejects zero-execution evidence");
+
+  const emptyEvidence = JSON.parse(JSON.stringify(valid));
+  emptyEvidence.governanceControl.verificationRuns[0].evidenceRefs = [];
+  writeJson(statusPath, emptyEvidence);
+  const emptyEvidenceResult = runNode([
+    "scripts/assess-governance.js",
+    "--status",
+    "assets/templates/workflow-status.json",
+    "--require-ready",
+    "--json"
+  ], { cwd: outputDir });
+  assert(emptyEvidenceResult.status !== 0, "governance rejects passing runs without evidence");
+
+  const unapprovedRun = JSON.parse(JSON.stringify(valid));
+  unapprovedRun.governanceControl.authorizedActions = ["read", "deliver"];
+  unapprovedRun.governanceControl.invocations[0].allowedActions = ["read", "deliver"];
+  writeJson(statusPath, unapprovedRun);
+  const unapprovedRunResult = runNode([
+    "scripts/assess-governance.js",
+    "--status",
+    "assets/templates/workflow-status.json",
+    "--require-ready",
+    "--json"
+  ], { cwd: outputDir });
+  assert(unapprovedRunResult.status !== 0, "governance rejects runs without verification authorization");
+
+  const conflictingRuns = JSON.parse(JSON.stringify(valid));
+  conflictingRuns.governanceControl.checks[0].evidenceRunIds.push("run-2");
+  conflictingRuns.governanceControl.verificationRuns.push({
+    id: "run-2",
+    invocationId: "invocation-1",
+    checkIds: ["check-1"],
+    verificationLevel: "V2",
+    result: {
+      assertion: "fail",
+      executed: 1,
+      runner: { status: "passed", exitCode: 0 },
+      wrapper: { status: "not_applicable", exitCode: null }
+    },
+    evidenceRefs: ["evidence:run-2"]
+  });
+  writeJson(statusPath, conflictingRuns);
+  const conflictingRunsResult = runNode([
+    "scripts/assess-governance.js",
+    "--status",
+    "assets/templates/workflow-status.json",
+    "--require-ready",
+    "--json"
+  ], { cwd: outputDir });
+  assert(conflictingRunsResult.status !== 0, "governance rejects conflicting evidence for a required check");
+
+  const unauthorized = JSON.parse(JSON.stringify(valid));
+  unauthorized.governanceControl.invocations[0].allowedActions.push("write_source");
+  writeJson(statusPath, unauthorized);
+  const unauthorizedResult = runNode([
+    "scripts/assess-governance.js",
+    "--status",
+    "assets/templates/workflow-status.json",
+    "--require-ready",
+    "--json"
+  ], { cwd: outputDir });
+  assert(unauthorizedResult.status !== 0, "governance rejects invocation actions outside task authorization");
+
+  const agentApproval = JSON.parse(JSON.stringify(valid));
+  agentApproval.governanceControl.approvals[0].reviewerType = "agent";
+  writeJson(statusPath, agentApproval);
+  const agentApprovalResult = runNode([
+    "scripts/assess-governance.js",
+    "--status",
+    "assets/templates/workflow-status.json",
+    "--require-ready",
+    "--json"
+  ], { cwd: outputDir });
+  assert(agentApprovalResult.status !== 0, "governance rejects Agent self-review as human approval");
+}
+
+function testExecutionAcceptanceRequiresObservedResults() {
+  const dir = tmpDir("execution-acceptance");
+  const { outputDir } = generateFixture(dir);
+  const report = JSON.parse(fs.readFileSync(path.join(outputDir, "generation-report.json"), "utf8"));
+  const contracts = runNode([
+    path.join(outputDir, "scripts", "run-acceptance-scenarios.js"),
+    outputDir,
+    "--mode",
+    "contracts"
+  ]);
+  assert(contracts.status === 0, "acceptance contract validation remains available", contracts.stdout + contracts.stderr);
+
+  const baseline = buildExecutionResults(outputDir, report);
+  const passing = runExecutionAcceptance(outputDir, baseline);
+  assert(passing.status === 0, "execution acceptance accepts complete observed results", passing.stdout + passing.stderr);
+
+  const rejectedCases = [
+    {
+      label: "missing scenario run",
+      mutate(results) { results.runs.pop(); }
+    },
+    {
+      label: "zero executed assertions",
+      mutate(results) { results.runs[0].result.executed = 0; }
+    },
+    {
+      label: "failed runner",
+      mutate(results) { results.runs[0].result.runner = { status: "failed", exitCode: 1 }; }
+    },
+    {
+      label: "unknown wrapper",
+      mutate(results) { results.runs[0].result.wrapper = { status: "unknown", exitCode: null }; }
+    },
+    {
+      label: "incomplete role partition",
+      mutate(results) {
+        const rolePlan = results.runs[0].rolePlan;
+        const populatedMode = ["notApplicable", "consulted", "active"]
+          .find((mode) => rolePlan[mode].length > 0);
+        rolePlan[populatedMode].pop();
+      }
+    },
+    {
+      label: "missing expected artifact",
+      mutate(results) { results.runs[0].producedArtifacts.pop(); }
+    },
+    {
+      label: "absolute artifact path",
+      mutate(results) {
+        results.runs[0].producedArtifacts[0].path = `/${results.runs[0].producedArtifacts[0].path}`;
+      }
+    },
+    {
+      label: "missing required gate",
+      mutate(results) { results.runs[0].passedGates.pop(); }
+    },
+    {
+      label: "missing failure assertion",
+      mutate(results) { results.runs[0].failureAssertions.pop(); }
+    },
+    {
+      label: "empty execution evidence",
+      mutate(results) { results.runs[0].evidenceRefs = []; }
+    },
+    {
+      label: "Agent approval presented as human approval",
+      mutate(results) {
+        results.runs[0].humanApproval.reviewerType = "agent";
+      }
+    }
+  ];
+  for (const rejected of rejectedCases) {
+    const results = buildExecutionResults(outputDir, report);
+    rejected.mutate(results);
+    const outcome = runExecutionAcceptance(outputDir, results);
+    assert(outcome.status !== 0, `execution acceptance rejects ${rejected.label}`);
+  }
+
+  const blockedClaim = buildExecutionResults(outputDir, report);
+  const artifact = blockedClaim.runs[0].producedArtifacts[0];
+  const blockedContent = report.riskControls.blockedClaims[0];
+  writeText(path.join(outputDir, artifact.path), blockedContent);
+  artifact.sha256 = sha256(blockedContent);
+  const blockedResult = runExecutionAcceptance(outputDir, blockedClaim);
+  assert(blockedResult.status !== 0, "execution acceptance rejects produced output containing a blocked claim");
+
+  const extraBlockedClaim = buildExecutionResults(outputDir, report);
+  const extraPath = path.posix.join("workspace", "acceptance", "extra-output.md");
+  writeText(path.join(outputDir, extraPath), blockedContent);
+  extraBlockedClaim.runs[0].producedArtifacts.push({
+    artifact: "extra-output.md",
+    path: extraPath,
+    sha256: sha256(blockedContent)
+  });
+  const extraBlockedResult = runExecutionAcceptance(outputDir, extraBlockedClaim);
+  assert(extraBlockedResult.status !== 0, "execution acceptance checks blocked claims in extra produced artifacts");
 }
 
 function testSkillAuditIsStaticAndSupportsBatchRoots() {
@@ -448,9 +901,12 @@ function main() {
   testInvalidSpecCannotScoreA();
   testHighRiskWithoutHumanReviewIsRejected();
   testCandidateMemberMayNotOwnStaticStage();
+  testAcceptanceRequiresParticipatingOwners();
   testVenturePackMatchesEntrepreneurGoal();
   testUnknownMedicalGoalUsesAssuranceAndHumanReview();
   testGeneratedStatusCarriesExecutionContract();
+  testGeneratedGovernanceEnforcesReadiness();
+  testExecutionAcceptanceRequiresObservedResults();
   testSkillAuditIsStaticAndSupportsBatchRoots();
   testSkillAuditChecksTeamRoleActivation();
   console.log("\nAll release regression checks passed.");

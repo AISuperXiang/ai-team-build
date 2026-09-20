@@ -4,7 +4,7 @@
     "id": "stock-trading-team",
     "name": "A Stock Trading Research Team Skill",
     "description": "A-share market research, strategy review, risk control, and trading-plan workflow skill.",
-    "version": "0.1.0",
+    "version": "0.3.0",
     "domain": "A 股投资研究与交易计划辅助",
     "targetUsers": [
       "需要结构化分析 A 股市场和个股的 Agent 用户",
@@ -74,6 +74,20 @@
         "target": "持续为 0",
         "evidenceSource": "risk gate 和 acceptance runner",
         "reviewCadence": "每次发布"
+      },
+      {
+        "name": "证据可复现率",
+        "baseline": "两次真实任务具备来源索引，但缺少完整快照和计算版本",
+        "target": "核心结论 100% 绑定来源定位、获取时间、计算口径和完整性信息",
+        "evidenceSource": "evidence-index、evidence manifest 和 workspace validator",
+        "reviewCadence": "每次研究交付后"
+      },
+      {
+        "name": "策略复盘覆盖率",
+        "baseline": "已有复盘节点，尚无结构化结果回填",
+        "target": "所有条件化策略均记录 1/5/20 交易日或事件节点结果",
+        "evidenceSource": "outcome-review 和历史任务台账",
+        "reviewCadence": "每周及财报节点"
       }
     ]
   },
@@ -98,6 +112,9 @@
       "complexity-gate",
       "evidence-gate",
       "verification-gate",
+      "governance-readiness-gate",
+      "execution-acceptance-gate",
+      "human-review-gate",
       "disclaimer-gate",
       "delivery-gate"
     ],
@@ -155,6 +172,13 @@
         "description": "汇总研究结论、证据、风险、失效条件和复盘计划。",
         "requiredInput": "研究上下文",
         "defaultOutput": "研究交付摘要"
+      },
+      {
+        "name": "full",
+        "workflow": "full-stock-research",
+        "description": "执行从输入、分析、策略、风控、复核到交付的完整研究链路。",
+        "requiredInput": "股票代码、研究周期、风险偏好和可用数据来源",
+        "defaultOutput": "完整研究包、分维度验证状态和待人工确认项"
       }
     ]
   },
@@ -223,7 +247,7 @@
         ]
       },
       "externalSkills": [
-        "finance-data-analysis"
+        "luckytx-cgyj-first-skill"
       ]
     },
     {
@@ -289,7 +313,7 @@
         ]
       },
       "externalSkills": [
-        "finance-data-analysis"
+        "luckytx-cgyj-first-skill"
       ]
     },
     {
@@ -356,7 +380,7 @@
         ]
       },
       "externalSkills": [
-        "finance-data-analysis"
+        "luckytx-cgyj-first-skill"
       ]
     },
     {
@@ -488,7 +512,7 @@
         ]
       },
       "externalSkills": [
-        "finance-data-analysis"
+        "luckytx-cgyj-first-skill"
       ]
     },
     {
@@ -689,7 +713,9 @@
       "members": [
         "market-researcher",
         "stock-analyst",
-        "data-analyst"
+        "data-analyst",
+        "risk-manager",
+        "delivery-manager"
       ],
       "execution_mode": "hybrid",
       "quality_gates": [
@@ -986,6 +1012,161 @@
           ]
         }
       ]
+    },
+    {
+      "id": "full-stock-research",
+      "title": "完整个股研究",
+      "triggers": [
+        "/stock-team full",
+        "完整个股分析",
+        "现况与操作建议"
+      ],
+      "commands": [
+        "/stock-team full"
+      ],
+      "members": [
+        "delivery-manager",
+        "market-researcher",
+        "stock-analyst",
+        "data-analyst",
+        "strategy-lead",
+        "risk-manager",
+        "execution-coach"
+      ],
+      "execution_mode": "hybrid",
+      "quality_gates": [
+        "intake-gate",
+        "role-activation-gate",
+        "evidence-gate",
+        "data-quality-gate",
+        "strategy-gate",
+        "risk-gate",
+        "discipline-gate",
+        "disclaimer-gate",
+        "human-review-gate",
+        "delivery-gate"
+      ],
+      "outputs": [
+        "research-brief",
+        "market-brief",
+        "stock-analysis",
+        "evidence-index",
+        "strategy-plan",
+        "risk-register",
+        "execution-plan",
+        "review-report",
+        "delivery-summary"
+      ],
+      "stages": [
+        {
+          "name": "Intake",
+          "owner": "delivery-manager",
+          "actions": [
+            "确认标的、周期、用户风险参数、数据边界和角色计划"
+          ],
+          "outputs": [
+            "research-brief.md"
+          ],
+          "gates": [
+            "intake-gate",
+            "role-activation-gate"
+          ]
+        },
+        {
+          "name": "Market",
+          "owner": "market-researcher",
+          "actions": [
+            "分析指数环境、板块轮动、题材阶段和反向证据"
+          ],
+          "outputs": [
+            "market-brief.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Stock",
+          "owner": "stock-analyst",
+          "actions": [
+            "分析基本面、估值、量价、事件和失效条件"
+          ],
+          "outputs": [
+            "stock-analysis.md"
+          ],
+          "gates": [
+            "evidence-gate"
+          ]
+        },
+        {
+          "name": "Data",
+          "owner": "data-analyst",
+          "actions": [
+            "固化来源、时效、复权、公式、冲突和证据定位"
+          ],
+          "outputs": [
+            "evidence-index.md"
+          ],
+          "gates": [
+            "data-quality-gate"
+          ]
+        },
+        {
+          "name": "Strategy",
+          "owner": "strategy-lead",
+          "actions": [
+            "形成条件化策略并标注每个阈值的依据"
+          ],
+          "outputs": [
+            "strategy-plan.md"
+          ],
+          "gates": [
+            "strategy-gate"
+          ]
+        },
+        {
+          "name": "Execution",
+          "owner": "execution-coach",
+          "actions": [
+            "形成执行检查、停止条件和结构化复盘计划"
+          ],
+          "outputs": [
+            "execution-plan.md"
+          ],
+          "gates": [
+            "discipline-gate"
+          ]
+        },
+        {
+          "name": "Risk Review",
+          "owner": "risk-manager",
+          "actions": [
+            "复核风险预算、流动性、禁止性承诺并协调真人审批"
+          ],
+          "outputs": [
+            "risk-register.md"
+          ],
+          "gates": [
+            "risk-gate",
+            "disclaimer-gate",
+            "human-review-gate"
+          ]
+        },
+        {
+          "name": "Delivery",
+          "owner": "delivery-manager",
+          "actions": [
+            "汇总结论、分维度验证等级、证据边界和待决策项"
+          ],
+          "outputs": [
+            "review-report.md",
+            "delivery-summary.md"
+          ],
+          "gates": [
+            "delivery-gate"
+          ]
+        }
+      ]
     }
   ],
   "docs": {
@@ -1063,7 +1244,9 @@
           "数据来源",
           "数据时效",
           "置信度",
-          "反向证据"
+          "反向证据",
+          "可复现性",
+          "阈值依据"
         ],
         "content": {
           "数据来源": [
@@ -1085,6 +1268,16 @@
             "每个核心结论必须列出至少一条可能推翻结论的证据。",
             "反向证据强于正向证据时，必须降低策略等级或阻断交付。",
             "不能只选择支持既有判断的数据。"
+          ],
+          "可复现性": [
+            "核心证据必须记录来源类型、发布主体、获取时间、数据截止时间、时区和精确定位。",
+            "动态数据必须保存合规快照或内容哈希，并记录 provider、版本、降级链路和质量分。",
+            "计算指标必须记录公式、参数、复权方式、输入样本数、输出值和允许误差。"
+          ],
+          "阈值依据": [
+            "价格、量能、仓位和风险阈值必须标记为 empirical、policy、user_input 或 heuristic。",
+            "heuristic 阈值不得作为高置信度结论的唯一依据。",
+            "缺少历史样本或用户风险参数时，策略结果和个性化验证等级保持 V0。"
           ]
         }
       }
@@ -1097,6 +1290,8 @@
           "数据来源",
           "更新时间",
           "缺失处理",
+          "证据封装",
+          "冲突容差",
           "安全边界"
         ],
         "content": {
@@ -1114,6 +1309,16 @@
             "关键字段缺失时输出“无法完成该判断”，不得用猜测补齐。",
             "非关键字段缺失时可以继续分析，但必须在证据索引中标注影响。",
             "数据冲突时必须同时列出冲突来源并降低置信度。"
+          ],
+          "证据封装": [
+            "每次运行必须记录 provider、providerVersion、retrievedAt、asOf、timezone 和 sourceUri。",
+            "动态行情保存原始响应快照或 SHA-256；引用公告时记录页码、表格或段落定位。",
+            "证据文件必须位于当前任务 workspace，不得只引用其他本地 Skill 的缓存路径。"
+          ],
+          "冲突容差": [
+            "价格和交易日期必须双源一致；不一致时停止价格触发类结论。",
+            "计算指标应在固定 fixture 上复算，超出声明容差时阻断 V2 以上验证。",
+            "前复权、不复权和后复权数据不得混用于同一趋势判断。"
           ],
           "安全边界": [
             "不得保存密钥、Cookie、Token 或个人账户信息。",
@@ -1135,6 +1340,9 @@
       "data-quality-gate",
       "evidence-gate",
       "verification-gate",
+      "governance-readiness-gate",
+      "execution-acceptance-gate",
+      "human-review-gate",
       "discipline-gate",
       "disclaimer-gate",
       "delivery-gate"
@@ -1144,6 +1352,9 @@
       "风险控制完整度",
       "策略假设清晰度",
       "反向证据覆盖度",
+      "证据可复现性",
+      "阈值依据透明度",
+      "验证边界准确性",
       "执行纪律可操作性",
       "免责声明完整度"
     ]
@@ -1259,6 +1470,7 @@
         "策略假设",
         "适用行情",
         "触发条件",
+        "阈值依据",
         "失效条件",
         "复盘计划"
       ],
@@ -1274,6 +1486,10 @@
         "触发条件": [
           "描述观察条件，不输出确定性买卖指令。",
           "触发条件必须可被数据或事件验证。"
+        ],
+        "阈值依据": [
+          "为价格、量能、仓位和风险阈值标记 empirical、policy、user_input 或 heuristic。",
+          "经验阈值必须说明局限，不得包装为历史验证结论。"
         ],
         "失效条件": [
           "列出价格、量能、事件或风险条件中的失效信号。",
@@ -1299,6 +1515,7 @@
       "content": {
         "仓位风险": [
           "记录假设仓位上限和不适合加仓的条件。",
+          "优先使用用户风险预算反推仓位；缺少用户输入时标记为 heuristic 并保持 personalization=V0。",
           "不得建议满仓或加杠杆。"
         ],
         "止损条件": [
@@ -1327,6 +1544,7 @@
         "行情数据",
         "公告新闻",
         "指标口径",
+        "来源完整性",
         "缺失与冲突",
         "结论映射"
       ],
@@ -1341,14 +1559,19 @@
         ],
         "指标口径": [
           "说明成交量、涨幅、趋势、关键位置等指标口径。",
+          "记录公式、参数、复权方式、样本数、工具版本和允许误差。",
           "不得使用未说明口径的指标支撑关键结论。"
+        ],
+        "来源完整性": [
+          "记录 provider、版本、sourceUri、retrievedAt、asOf、timezone、locator 和质量等级。",
+          "动态来源保存当前任务内的快照或 SHA-256，不得只引用跨项目本地缓存。"
         ],
         "缺失与冲突": [
           "列出缺失字段、冲突来源和对结论的影响。",
           "关键数据冲突时必须降低置信度或阻断结论。"
         ],
         "结论映射": [
-          "把每个核心结论映射到对应证据。",
+          "按 claim ID 把每个核心结论映射到证据、反证、置信度和限制。",
           "没有证据映射的结论不得进入交付摘要。"
         ]
       }
@@ -1362,6 +1585,7 @@
         "证据索引",
         "风险声明",
         "置信度",
+        "验证矩阵",
         "失效条件",
         "复盘计划"
       ],
@@ -1381,6 +1605,10 @@
         "置信度": [
           "给出高、中、低，并解释不确定性来源。",
           "缺少核心证据时不得标为高。"
+        ],
+        "验证矩阵": [
+          "分别报告 data、facts、workflow、strategyOutcome 和 personalization 的 V0-V4。",
+          "不得用数据抓取或流程运行证据抬高策略结果和个性化等级。"
         ],
         "失效条件": [
           "列出市场、板块、个股和数据维度的失效条件。",
@@ -1408,13 +1636,17 @@
     "evidenceChecklist": [
       "行情数据必须包含来源和更新时间。",
       "策略必须包含支持证据、反向证据、置信度和失效条件。",
-      "高风险结论必须包含免责声明和禁止性承诺检查。"
+      "高风险结论必须包含免责声明和禁止性承诺检查。",
+      "核心事实必须有页码、表格、字段或内容哈希等精确定位。",
+      "计算指标必须可由固定输入、版本化公式和参数重复得到。"
     ],
     "failureModes": [
       "把未经验证的消息当作事实。",
       "只看单一技术指标就输出确定结论。",
       "缺少止损、仓位或失效条件仍交付策略。",
-      "使用确定性买卖指令或承诺收益。"
+      "使用确定性买卖指令或承诺收益。",
+      "把 Agent 角色复核记录成人工审批。",
+      "把数据链路 V3 表述为策略效果 V3。"
     ]
   },
   "capabilityMatrix": [
@@ -1487,6 +1719,7 @@
         "evidence-gate",
         "risk-gate",
         "disclaimer-gate",
+        "human-review-gate",
         "delivery-gate"
       ],
       "failureExamples": [
@@ -1494,22 +1727,21 @@
         "未标注行情数据来源和更新时间。",
         "没有列出反向证据或失效条件。"
       ],
-      "expectedWorkflow": "market-stock-analysis",
+      "expectedWorkflow": "full-stock-research",
       "expectedProfile": "assurance",
       "minimumVerificationLevel": "V3",
       "expectedRolePlan": {
         "active": [
+          "strategy-lead",
           "market-researcher",
           "stock-analyst",
-          "data-analyst"
-        ],
-        "consulted": [],
-        "notApplicable": [
-          "strategy-lead",
           "risk-manager",
+          "data-analyst",
           "execution-coach",
           "delivery-manager"
-        ]
+        ],
+        "consulted": [],
+        "notApplicable": []
       }
     },
     {
@@ -1523,7 +1755,9 @@
       "mustPassGates": [
         "data-quality-gate",
         "evidence-gate",
-        "disclaimer-gate"
+        "disclaimer-gate",
+        "human-review-gate",
+        "delivery-gate"
       ],
       "failureExamples": [
         "把传闻当作确定政策或公告。",
@@ -1539,13 +1773,94 @@
           "data-analyst"
         ],
         "consulted": [
-          "stock-analyst"
+          "stock-analyst",
+          "risk-manager",
+          "delivery-manager"
         ],
         "notApplicable": [
           "strategy-lead",
+          "execution-coach"
+        ]
+      }
+    },
+    {
+      "id": "new-listing-extreme-volatility",
+      "input": "用户询问上市不足五个交易日、无涨跌幅限制且高换手个股的现况与操作建议。",
+      "expectedOutputs": [
+        "market-brief.md",
+        "stock-analysis.md",
+        "evidence-index.md",
+        "risk-register.md",
+        "delivery-summary.md"
+      ],
+      "mustPassGates": [
+        "data-quality-gate",
+        "evidence-gate",
+        "risk-gate",
+        "disclaimer-gate",
+        "human-review-gate",
+        "delivery-gate"
+      ],
+      "failureExamples": [
+        "用不足五日的数据计算并采信常规均线支撑。",
+        "忽略无涨跌幅限制、临停和不可成交风险。",
+        "把行业估值映射值写成必然底价或买入价。"
+      ],
+      "expectedWorkflow": "full-stock-research",
+      "expectedProfile": "assurance",
+      "minimumVerificationLevel": "V3",
+      "expectedRolePlan": {
+        "active": [
+          "strategy-lead",
+          "market-researcher",
+          "stock-analyst",
           "risk-manager",
+          "data-analyst",
           "execution-coach",
           "delivery-manager"
+        ],
+        "consulted": [],
+        "notApplicable": []
+      }
+    },
+    {
+      "id": "conflicting-market-data",
+      "input": "两个行情来源的价格、交易日或复权口径冲突，用户仍要求给出精确交易触发位。",
+      "expectedOutputs": [
+        "stock-analysis.md",
+        "evidence-index.md",
+        "risk-register.md",
+        "delivery-summary.md"
+      ],
+      "mustPassGates": [
+        "data-quality-gate",
+        "evidence-gate",
+        "risk-gate",
+        "disclaimer-gate",
+        "human-review-gate",
+        "delivery-gate"
+      ],
+      "failureExamples": [
+        "静默选择更符合原判断的数据源。",
+        "在数据冲突未解决时输出精确价格触发条件。",
+        "把降级来源标为高置信度一手证据。"
+      ],
+      "expectedWorkflow": "market-stock-analysis",
+      "expectedProfile": "assurance",
+      "minimumVerificationLevel": "V2",
+      "expectedRolePlan": {
+        "active": [
+          "stock-analyst",
+          "risk-manager",
+          "data-analyst",
+          "delivery-manager"
+        ],
+        "consulted": [
+          "market-researcher"
+        ],
+        "notApplicable": [
+          "strategy-lead",
+          "execution-coach"
         ]
       }
     }
@@ -1558,7 +1873,10 @@
         "标的名称或代码",
         "时间周期",
         "数据来源",
-        "更新时间"
+        "更新时间",
+        "数据截止时间",
+        "时区",
+        "提供者版本或来源版本"
       ],
       "missingDataPolicy": "缺少关键字段时停止对应判断，并写入信息缺口。",
       "allowedUse": [
@@ -1573,8 +1891,10 @@
       "requiredFields": [
         "来源名称",
         "发布时间",
+        "获取时间",
         "核心事实",
-        "引用位置"
+        "引用位置",
+        "内容哈希或任务内快照"
       ],
       "missingDataPolicy": "无法确认来源或时间时不得作为核心证据。",
       "allowedUse": [
@@ -1587,10 +1907,10 @@
   "externalSkills": {
     "skills": [
       {
-        "id": "finance-data-analysis",
-        "name": "Finance Data Analysis",
-        "package": "example/finance-data-analysis@latest",
-        "qualityTier": "candidate",
+        "id": "luckytx-cgyj-first-skill",
+        "name": "A-Share Market Data and Strategy",
+        "package": "luckytx-cgyj-first-skill",
+        "qualityTier": "verified-local",
         "roles": [
           "market-researcher",
           "stock-analyst",
@@ -1615,48 +1935,53 @@
       {
         "role": "market-researcher",
         "skills": [
-          "finance-data-analysis"
+          "luckytx-cgyj-first-skill"
         ]
       },
       {
         "role": "stock-analyst",
         "skills": [
-          "finance-data-analysis"
+          "luckytx-cgyj-first-skill"
         ]
       },
       {
         "role": "data-analyst",
         "skills": [
-          "finance-data-analysis"
+          "luckytx-cgyj-first-skill"
         ]
       },
       {
         "role": "strategy-lead",
         "skills": [
-          "finance-data-analysis"
+          "luckytx-cgyj-first-skill"
         ]
       }
     ],
     "adapters": [
       {
-        "id": "finance-data-analysis-adapter",
-        "skill": "finance-data-analysis",
-        "provider": "external-skill",
+        "id": "a-share-market-data-adapter",
+        "skill": "luckytx-cgyj-first-skill",
+        "provider": "installed-skill",
         "inputSchema": [
           "symbolOrIndex",
           "timeRange",
           "dataSource",
-          "freshness"
+          "freshness",
+          "adjustmentMode",
+          "timezone"
         ],
         "outputSchema": [
           "marketDataSummary",
           "indicatorNotes",
           "sourceTimestamp",
+          "providerVersion",
+          "calculationParameters",
+          "sourceDigest",
           "dataQualityRisks"
         ],
         "auth": "user-approval",
         "fallback": "未获授权时仅使用用户提供数据和公开信息，并降低置信度。",
-        "verifyCommand": "node scripts/list-external-skills.js --role data-analyst --query finance"
+        "verifyCommand": "node scripts/list-external-skills.js --role data-analyst --query A股"
       }
     ],
     "installPolicy": "外部金融数据能力仅作为候选；未获得用户明确授权、数据来源和合规边界前不得安装或调用。"

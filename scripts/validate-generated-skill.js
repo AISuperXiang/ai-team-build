@@ -6,6 +6,7 @@ const {
   isValidRequiredCommandField,
   REQUIRED_COMMAND_FIELDS
 } = require("./command-contract");
+const { assessGovernanceState } = require("./governance-core");
 
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage", ".tmp"]);
 const TEXT_EXTENSIONS = new Set([".md", ".json", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx"]);
@@ -177,6 +178,8 @@ function main() {
 
   const requiredFiles = [
     "SKILL.md",
+    "AGENTS.md",
+    ".npmignore",
     "README.md",
     "README_EN.md",
     "evaluation-report.md",
@@ -194,6 +197,8 @@ function main() {
     "docs/capability-matrix.md",
     "docs/acceptance-scenarios.md",
     "docs/integrations/data-contracts.md",
+    "assets/templates/workflow-status.json",
+    "assets/templates/acceptance-results.json",
     "assets/templates/decision-log.md",
     "assets/templates/risk-register.md",
     "assets/templates/role-handoff.md",
@@ -208,6 +213,9 @@ function main() {
     "members/README.md",
     "scripts/validate-structure.js",
     "scripts/validate-contracts.js",
+    "scripts/governance-core.js",
+    "scripts/assess-governance.js",
+    "scripts/validate-workspace.js",
     "scripts/run-acceptance-scenarios.js",
     "workflows/README.md",
     "workflows/route-table.md",
@@ -269,12 +277,24 @@ function main() {
   }
 
   if (report) {
+    record(report.generator === "ai-team-build", "generation report records generator id");
+    record(/^\d+\.\d+\.\d+$/.test(String(report.generatorVersion || "")), "generation report records semantic generator version");
     record(Boolean(report.evaluation), "generation-report.json has evaluation summary");
+    record(report.evaluation && report.evaluation.scoreType === "blueprint-contract", "evaluation identifies blueprint-contract score type");
     record(typeof (report.evaluation && report.evaluation.totalScore) === "number", "evaluation has numeric totalScore");
+    record(report.evaluation && report.evaluation.runtimeScore === null, "evaluation does not fabricate a runtime score");
+    record(report.evaluation && report.evaluation.outcomeScore === null, "evaluation does not fabricate an outcome score");
     record(Boolean(report.evaluation && report.evaluation.grade), "evaluation has grade");
     record(report.evaluation && report.evaluation.reportPath === "evaluation-report.md", "evaluation reportPath is evaluation-report.md");
     record(report.verification && report.verification.factoryVerificationLevel === "V2", "generation report records factory verification level");
     record(report.verification && report.verification.generatedTeamVerificationLevel === "V0", "generation report keeps generated team at V0");
+    record(report.verification && report.verification.governanceContractVersion === "1.0", "generation report records governance contract version");
+    record(
+      report.verification &&
+        Array.isArray(report.verification.acceptanceModes) &&
+        ["contracts", "execution"].every((mode) => report.verification.acceptanceModes.includes(mode)),
+      "generation report declares contracts and execution acceptance modes"
+    );
     if (report.evaluation && report.evaluation.grade === "A") {
       record(report.counts && report.counts.acceptanceScenarios > 0, "A-grade generated skill has acceptance scenarios");
       record(report.counts && report.counts.dataContracts > 0, "A-grade generated skill has data contracts");
@@ -445,6 +465,7 @@ function main() {
     }
     if (schemaFile === "schemas/status.schema.json") {
       const rolePlan = schema && schema.properties && schema.properties.rolePlan;
+      const governanceControl = schema && schema.properties && schema.properties.governanceControl;
       record(Array.isArray(schema && schema.required) && schema.required.includes("rolePlan"), "status schema requires rolePlan");
       record(
         Boolean(rolePlan && rolePlan.items && rolePlan.items.properties && rolePlan.items.properties.mode),
@@ -457,6 +478,18 @@ function main() {
       record(
         Array.isArray(schema && schema.required) && schema.required.includes("verificationLevel"),
         "status schema requires verificationLevel"
+      );
+      record(
+        Array.isArray(schema && schema.required) && schema.required.includes("verificationScopes"),
+        "status schema requires verificationScopes"
+      );
+      record(
+        Array.isArray(schema && schema.required) && schema.required.includes("governanceControl"),
+        "status schema requires governanceControl"
+      );
+      record(
+        Boolean(governanceControl && governanceControl.properties && governanceControl.properties.completion),
+        "status schema defines governance completion"
       );
     }
     if (schemaFile === "schemas/skill-runtime.schema.json") {
@@ -479,9 +512,13 @@ function main() {
       "workflow status has valid executionProfile"
     );
     record(/^V[0-4]$/.test(String(status && status.verificationLevel)), "workflow status has valid verificationLevel");
+    record(Boolean(status && status.verificationScopes), "workflow status has verificationScopes");
     record(/^V[0-4]$/.test(String(status && status.targetVerificationLevel)), "workflow status has targetVerificationLevel");
     record(Array.isArray(status && status.blockers), "workflow status has blockers array");
     record(Array.isArray(status && status.uncoveredRisks), "workflow status has uncoveredRisks array");
+    const governanceAssessment = assessGovernanceState(status);
+    record(governanceAssessment.valid, "workflow status governance control is structurally valid");
+    record(governanceAssessment.readiness === "review", "initial workflow status governance readiness is review");
   }
 
   if (existsFile(root, "external-skills/adapters.json")) {

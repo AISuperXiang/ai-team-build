@@ -10,7 +10,7 @@
 - `skill-runtime.json`：面向安装器和通用 Agent，声明入口、运行环境、requiredFiles、安装方式和 agentHints。
 - `package.json`：声明 Node 版本、安装验证脚本和完整 `npm test`。
 - `evaluation-report.md`：记录当前团队评分、等级、维度证据、可提升项和能力升级建议。
-- `generation-report.json`：记录生成来源、文件计划、计数、评分摘要、验收场景和风险约束。
+- `generation-report.json`：记录 `generator`、`generatorVersion`、生成来源、文件计划、计数、评分摘要、验收场景和风险约束。
 - `skill-evolution-audit.md`：已有 Skill 的静态审计基线、发现、证据、验证建议和复审结论；按需生成，不要求写入目标 Skill。
 
 ## 标准目录
@@ -64,7 +64,10 @@
 - `docs/execution-methodology.md` 必须定义 `lightweight`、`standard`、`assurance` 与升级条件。
 - `docs/role-activation-methodology.md` 必须定义 `active`、`consulted`、`not_applicable`、N/A 评分和 rolePlan 重评。
 - `docs/verification-methodology.md` 必须定义 `V0-V4`、结论上限，以及工厂验证与真实业务验证的边界。
-- `workflow-status.json` 必须记录复杂度、执行档位、当前/目标验证等级、blockers、uncoveredRisks 和 rolePlan。
+- `workflow-status.json` 必须记录复杂度、执行档位、当前/目标验证等级、blockers、uncoveredRisks、
+  rolePlan 和 `governanceControl`。
+- `governanceControl` 必须记录有效契约、任务授权、invocation、required checks、结构化运行结果、
+  人工审批策略和 completion claim；readiness 由评估器派生，不作为可手填事实保存。
 
 ## 内容深度标准
 
@@ -85,7 +88,10 @@
 - `scripts/generation-plan.js`：生成计划、文件清单、dry-run 计数。
 - `scripts/template-engine.js`：docs、templates、能力矩阵、验收场景、数据契约渲染。
 - `scripts/synthesize-team-spec.js`：自然语言目标到 domain pack/spec 的合成入口。
-- `scripts/run-acceptance-scenarios.js`：生成物 golden 场景验收。
+- `scripts/governance-core.js`：纯函数治理校验和 readiness 派生。
+- `scripts/assess-governance.js`：只读评估任务状态；终态交付使用 `--require-ready`。
+- `scripts/validate-workspace.js`：核对真实任务的角色、阶段、产物、证据引用、分维度验证和治理状态。
+- `scripts/run-acceptance-scenarios.js`：分离静态契约检查与结构化场景执行验收。
 - `scripts/run-generated-fixture-test.js`：在系统临时目录执行 fixture 规格校验、生成、生成物校验和验收，并保证清理。
 - `scripts/command-contract.js`：维护 command 路由 frontmatter 的共享必需字段。
 - `scripts/audit-skills.js`：对一个或多个已有 Skill 做无副作用的静态执行质量审计。
@@ -119,7 +125,10 @@
 - docs/templates 通过非空内容检查。
 - schemas 具备 required/properties 深度。
 - external-skills/adapters.json 具备 provider、inputSchema、outputSchema、auth、fallback、verifyCommand。
-- acceptance scenarios 可以通过 `scripts/run-acceptance-scenarios.js`。
+- acceptance contracts 可以通过 `scripts/run-acceptance-scenarios.js --mode contracts`。
+- execution acceptance 必须使用 `--mode execution --results <workspace-relative-json>`，
+  并核对场景输入、真实产物哈希、门禁、反例断言及 assertion/runner/wrapper。
+- 初始治理模板的 readiness 为 `review`；伪造终态、越权 invocation、零执行和缺少适用审批必须被阻断。
 - A 级验收场景包含预期 workflow、执行档位、最低验证等级和 rolePlan。
 - 高风险领域包含免责声明、禁止性承诺和证据规则。
 - 高风险领域包含人工责任人、触发条件和无批准阻断。

@@ -68,19 +68,42 @@
 
 ## acceptance-gate
 
-生成物必须可执行：
+生成物必须提供两个明确分层的入口：
 
 ```bash
-node scripts/run-acceptance-scenarios.js .
+node scripts/run-acceptance-scenarios.js . --mode contracts
+node scripts/run-acceptance-scenarios.js . --mode execution --results workspace/acceptance-results.json
 ```
 
-验收场景必须检查：
+`contracts` 只检查生成契约：
 
 - `expectedOutputs` 对应产物存在。
 - `mustPassGates` 在生成物中可追踪。
 - `failureExamples` 被写入生成物。
 - A 级场景的 `expectedWorkflow`、`expectedProfile`、`minimumVerificationLevel` 和 `expectedRolePlan` 有效。
 - 风险声明、禁止性承诺和证据规则可追踪。
+
+`execution` 必须检查：
+
+- 每个声明场景恰好有一个运行结果，且输入摘要匹配。
+- workflow、execution profile、verification level 和完整 rolePlan 与场景契约一致。
+- 所有期望产物来自 `workspace/`，是非空普通文件且 SHA-256 匹配。
+- 必过门禁、失败样例断言和证据引用完整。
+- assertion 为 pass、`executed > 0`、runner 成功，wrapper 成功或明确不适用。
+- 高风险输出包含必需免责声明且不包含禁止性承诺。
+
+静态契约通过不得表述为场景执行或业务结果通过。
+
+## governance-readiness-gate
+
+- `workflow-status.json.governanceControl` 是任务治理权威记录。
+- 终态 claim 必须绑定 confirmed contract、当前 invocation、任务授权范围、required checks 和结构化 verification runs。
+- 汇总 `verificationLevel` 不得高于可信运行结果支持的等级。
+- 高风险或显式人工复核任务在缺少当前契约审批时不得 ready。
+- readiness 由 `scripts/assess-governance.js` 只读派生；初始模板应为 `review`，不是 `ready`。
+- 人工审批必须记录 `reviewerType=human`、复核人、时间和证据，Agent 自审不能替代。
+- `verificationLevel` 只代表 workflow，并必须与 `verificationScopes.workflow` 一致。
+- 使用 `scripts/validate-workspace.js --require-ready --min-score 90` 检查真实任务的角色、产物和证据引用。
 
 ## risk-gate
 
@@ -109,7 +132,7 @@ node scripts/run-acceptance-scenarios.js .
 
 ```bash
 node scripts/validate-generated-skill.js <generated-skill-path>
-node <generated-skill-path>/scripts/run-acceptance-scenarios.js <generated-skill-path>
+node <generated-skill-path>/scripts/run-acceptance-scenarios.js <generated-skill-path> --mode contracts
 ```
 
 生成工厂的结构与契约验证等级为 V2。新生成团队的真实业务验证等级必须保持 V0，直到真实任务证据支持升级；不得把 A 级蓝图写成业务效果已验证。

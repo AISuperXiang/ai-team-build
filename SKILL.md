@@ -41,7 +41,7 @@ metadata:
 
 | 用户意图 | 主路径 | 必跑验证 |
 | --- | --- | --- |
-| `/team-build create <目标>` 或“创建某团队 Skill” | `intake -> spec -> review -> generate -> validate -> score -> acceptance -> deliver` | `npm test` 或生成物三段验证 |
+| `/team-build create <目标>` 或“创建某团队 Skill” | `intake -> spec -> review -> generate -> validate -> score -> acceptance -> deliver` | `npm test`、治理评估和 acceptance contracts |
 | `/team-build spec <目标>` 或“先生成规格” | `intake -> synthesize spec -> validate spec -> score spec` | `npm run validate:spec -- <spec>` |
 | `/team-build from-spec <spec>` | `validate spec -> dry-run plan -> generate -> validate -> score -> acceptance` | `validate:generated` + acceptance |
 | `/team-build review <spec>` | `validate spec -> score spec -> report blockers` | `npm run validate:spec -- <spec>` + `npm run score -- <spec>` |
@@ -58,7 +58,7 @@ metadata:
 | 生成或补齐团队规格 | `schemas/team-spec.schema.json`、`docs/generation-methodology.md`、`docs/risk-control-standard.md` | `domain-packs/*/domain-pack.json`、`examples/*.team-spec.json`、`fixtures/stock-trading-team.team-spec.json` |
 | 从规格生成 Skill | `scripts/generate-team-skill.js`、`scripts/validate-team-spec.js`、`docs/reference-standard.md` | `scripts/generation-plan.js`、`scripts/template-engine.js` |
 | 校验生成物 | `scripts/validate-generated-skill.js`、`docs/generated-skill-quality-gates.md` | 目标 Skill 的 `generation-report.json` |
-| 验收生成物 | `scripts/run-acceptance-scenarios.js` | 目标 Skill 的 `generation-report.json`、`docs/acceptance-scenarios.md` |
+| 验收生成物 | `scripts/run-acceptance-scenarios.js`、`scripts/governance-core.js` | 目标 Skill 的 `generation-report.json`、`docs/acceptance-scenarios.md`、执行结果 JSON |
 | 评分与升级建议 | `scripts/score-team-spec.js`、`docs/team-scoring-rubric.md` | 目标 Skill 的 `evaluation-report.md`、`generation-report.json` |
 | 审计或升华已有 Skill | `scripts/audit-skills.js`、`docs/skill-evolution-methodology.md` | 目标 Skill 的 `SKILL.md`、`package.json`、验证脚本和既有审计报告 |
 | 创业或经营团队样例 | `examples/venture-building-team.team-spec.json`、`domain-packs/venture-building/domain-pack.json` | `docs/risk-control-standard.md` |
@@ -76,7 +76,8 @@ metadata:
 4. **Review**：检查角色、命令、工作流、执行档位、验证等级、人工责任、双语 README、docs、assets、domainKnowledge、capabilityMatrix、acceptanceScenarios、dataContracts、Capability Adapter、scripts、external skills 和风险控制是否覆盖目标。
 5. **Generate**：调用 `node scripts/generate-team-skill.js --spec <path> --output <dir>` 物化目录。
 6. **Validate**：调用 `node scripts/validate-generated-skill.js <dir>` 校验生成结果。
-7. **Acceptance**：调用 `node <generated>/scripts/run-acceptance-scenarios.js <generated>` 校验 golden 场景。
+7. **Acceptance**：先用 `--mode contracts` 校验静态契约；只有获得真实场景结果后才用
+   `--mode execution --results <workspace-relative-json>` 验收输入绑定、角色、产物、门禁、反例和执行结果。
 8. **Score**：调用 `node scripts/score-team-spec.js <spec-path>` 或读取生成物 `evaluation-report.md`，输出总分、等级、维度得分、短板和升级建议。
 9. **Elevate**：审计已有 Skill 时，先运行 `scripts/audit-skills.js`，只处理有证据的 P0/P1/P2；修改后运行目标 Skill 已声明的验证命令并复跑静态审计。
 10. **Deliver**：输出生成路径或审计报告、核心文件、验证命令、验收结果、评分结论、升级建议、风险和后续注册说明。
@@ -93,7 +94,10 @@ npm run validate:spec -- .tmp/team-spec.json
 npm run score -- .tmp/team-spec.json
 npm run generate -- --spec .tmp/team-spec.json --output <skills-root>/<skill-id>
 npm run validate:generated -- <skills-root>/<skill-id>
-node <skills-root>/<skill-id>/scripts/run-acceptance-scenarios.js <skills-root>/<skill-id>
+node <skills-root>/<skill-id>/scripts/run-acceptance-scenarios.js <skills-root>/<skill-id> --mode contracts
+node <skills-root>/<skill-id>/scripts/run-acceptance-scenarios.js <skills-root>/<skill-id> --mode execution --results workspace/acceptance-results.json
+node <skills-root>/<skill-id>/scripts/assess-governance.js --status assets/templates/workflow-status.json
+node <skills-root>/<skill-id>/scripts/validate-workspace.js --status workspace/<task>/workflow-status.json --require-ready --min-score 90
 npm run audit:skills -- <skill-path>
 npm run audit:skills -- --root <skills-root> --output-dir .tmp/skill-audits
 npm run verify:install
@@ -125,6 +129,10 @@ npm pack --dry-run --json
 - 如果声明 external skills，A 级团队必须包含 `externalSkills.adapters`，记录输入、输出、授权、降级和验证命令。
 - `docs.*[].content` 和 `templates[].content` 应覆盖每个章节，不得保留空 bullet 或“待执行时补齐”占位。
 - 生成物必须包含 `README.md`、`README_EN.md`、`SKILL.md`、`package.json`、`skill-runtime.json`、`commands/`、`docs/`、`schemas/`、`assets/templates/`、`scripts/`、`members/`、`workflows/`、`workspace/`、`external-skills/`、`external-cli/`。
+- 生成物必须包含治理评估器；终态 claim 只能由 confirmed contract、授权 invocation、
+  required checks、可信 assertion/runner/wrapper 结果和适用人工审批共同支持。
+- 静态 acceptance contracts 不得表述为场景执行；execution 模式缺场景、角色、产物哈希、
+  门禁、反例断言或实际执行时必须失败。
 - `README.md` 为默认中文用户文档，`README_EN.md` 为对应英文用户文档且两者互链；SKILL 面向 Agent 执行，不得混用职责。
 
 ## 生成安全规则
@@ -144,7 +152,7 @@ npm pack --dry-run --json
 - `requiredDisclaimers` 至少一条。
 - `blockedClaims` 至少一条。
 - `evidenceRules` 至少一条。
-- `humanReview` 必须指定人工责任角色、触发条件，并在无批准时阻断交付或不可逆操作。
+- `humanReview` 必须指定人工责任角色、触发条件，并在无批准时阻断交付或不可逆操作；Agent 角色自审不能替代真人批准。
 
 生成高风险团队时，Agent 必须确保生成物包含免责声明、禁止性承诺、证据要求、置信度和失效条件。A 股团队不得承诺收益，不得输出确定性买卖指令，不得替代持牌投顾建议。
 

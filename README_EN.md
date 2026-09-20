@@ -127,6 +127,18 @@ npm run generate -- \
 
 ```bash
 npm run validate:generated -- <skills-root>/product-rd-team
+node <skills-root>/product-rd-team/scripts/run-acceptance-scenarios.js \
+  <skills-root>/product-rd-team --mode contracts
+```
+
+`contracts` validates generated contracts only. After real scenario execution, create a result
+file from `assets/templates/acceptance-results.json`, then run:
+
+```bash
+node <skills-root>/product-rd-team/scripts/run-acceptance-scenarios.js \
+  <skills-root>/product-rd-team \
+  --mode execution \
+  --results workspace/acceptance-results.json
 ```
 
 ### Audit an Existing Skill
@@ -307,11 +319,11 @@ Core structure:
 | `docs/capability-matrix.md` | Team capability matrix |
 | `docs/acceptance-scenarios.md` | Golden acceptance scenarios |
 | `docs/integrations/data-contracts.md` | Data sources, freshness, missing-data handling, and permitted use |
-| `assets/templates/` | Decision, risk, handoff, evidence, and delivery templates |
+| `assets/templates/` | Decision, risk, handoff, evidence, execution-result, and delivery templates |
 | `external-skills/adapters.json` | Authorization, inputs, outputs, fallback, and verification for external capabilities |
 | `evaluation-report.md` | Team score, weaknesses, and capability upgrades |
-| `generation-report.json` | Generation plan, file inventory, risk controls, and acceptance index |
-| `scripts/` | Structure, contract, acceptance, and helper scripts |
+| `generation-report.json` | Generator name and version, generation plan, file inventory, risk controls, and acceptance index |
+| `scripts/` | Structure, contracts, governance readiness, execution acceptance, and helper scripts |
 
 ## Quality Gates
 
@@ -322,8 +334,11 @@ Core structure:
 - Declared external Skills require a Capability Adapter with inputs, outputs, authorization, fallback, and verification commands.
 - `generic-draft` is reviewable scaffolding and cannot receive an A grade.
 - High-risk domains require disclaimers, blocked claims, evidence rules, confidence, and invalidation conditions.
-- High-risk domains require a human owner and must block delivery or irreversible action without approval.
-- Generated output must pass structure validation, contract validation, scoring, and acceptance scenarios.
+- High-risk domains require a human owner and must block delivery or irreversible action without approval; an Agent self-review is not human approval.
+- Generated output must pass structure, contract, governance-state, and static acceptance-contract validation.
+- Execution acceptance must bind the input digest, complete role plan, workspace artifact hashes, gates, failure assertions, and distinct assertion/runner/wrapper outcomes; zero execution or unknown results cannot pass.
+- A terminal claim requires a confirmed contract, an authorized invocation, required checks, and any applicable human approval.
+- `verificationLevel` represents workflow verification only; data, facts, workflow, strategy outcomes, and personalization are rated separately.
 - Generated output must include mutually linked `README.md` and `README_EN.md`; generation remains offline and never calls online translation.
 - Every candidate member must appear in `rolePlan`; only participating roles are loaded, and N/A decisions retain evidence.
 - An A grade certifies blueprint and contract quality, not real domain capability or outcomes.

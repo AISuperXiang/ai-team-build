@@ -37,7 +37,13 @@ function main() {
     runNode(["scripts/validate-team-spec.js", specPath]);
     runNode(["scripts/generate-team-skill.js", "--spec", specPath, "--output", outputDir, "--overwrite"]);
     runNode(["scripts/validate-generated-skill.js", outputDir]);
-    runNode([path.join(outputDir, "scripts", "run-acceptance-scenarios.js"), outputDir]);
+    runNode([
+      path.join(outputDir, "scripts", "assess-governance.js"),
+      "--status",
+      "assets/templates/workflow-status.json",
+      "--json"
+    ], { cwd: outputDir });
+    runNode([path.join(outputDir, "scripts", "run-acceptance-scenarios.js"), outputDir, "--mode", "contracts"]);
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }

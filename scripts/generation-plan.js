@@ -55,6 +55,8 @@ function plannedFilesForSpec(spec) {
 
   return [...new Set([
     "SKILL.md",
+    "AGENTS.md",
+    ".npmignore",
     "README.md",
     "README_EN.md",
     "evaluation-report.md",
@@ -83,6 +85,9 @@ function plannedFilesForSpec(spec) {
     "members/README.md",
     "scripts/validate-structure.js",
     "scripts/validate-contracts.js",
+    "scripts/governance-core.js",
+    "scripts/assess-governance.js",
+    "scripts/validate-workspace.js",
     "scripts/list-external-skills.js",
     "scripts/install-external-skills.js",
     "scripts/run-acceptance-scenarios.js",
@@ -91,6 +96,7 @@ function plannedFilesForSpec(spec) {
     "workflows/execution-protocol.md",
     "workspace/README.md",
     "assets/templates/workflow-status.json",
+    "assets/templates/acceptance-results.json",
     ...coreGovernanceTemplateFiles(spec),
     "schemas/member.schema.json",
     "schemas/workflow.schema.json",

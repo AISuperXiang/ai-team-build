@@ -476,11 +476,14 @@ function renderScoreMarkdown(spec, score) {
 
 - 团队：${spec.skill.name} (${spec.skill.id})
 - 领域：${spec.skill.domain}
-- 总分：${score.totalScore}/100
+- 评分类型：蓝图与静态契约，不代表运行结果或策略收益
+- 蓝图总分：${score.totalScore}/100
 - 等级：${score.grade}
 - 等级判定分：${score.gradeScore}/100
 - 规格成熟度：${score.certificationLevel}
 - 生成团队验证上限：${score.teamVerificationCeiling}
+- 运行时评分：未执行，必须由 workspace 校验器独立给出
+- 策略结果评分：未观察，保持 V0
 - 决策建议：${score.decisionAdvice}
 
 ## A 级阻断项

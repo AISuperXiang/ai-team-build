@@ -43,7 +43,8 @@ execution_mode: sequential
 5. 从规格生成时调用 `scripts/generate-team-skill.js`。
 6. `--dry-run` 只输出 GenerationPlan，不写入或删除目录。
 7. 生成后调用 `scripts/validate-generated-skill.js`。
-8. 生成后调用 `<generated>/scripts/run-acceptance-scenarios.js <generated>`。
+8. 生成后调用 `<generated>/scripts/run-acceptance-scenarios.js <generated> --mode contracts`；
+   只有获得真实场景结果时才调用 `--mode execution --results <workspace-relative-json>`。
 9. 生成后读取 `evaluation-report.md` 或调用 `scripts/score-team-spec.js`。
 10. 输出生成路径、角色数量、命令数量、工作流数量、内容深度、验收资产、Adapter、蓝图认证、工厂/团队验证等级、评分结论、升级建议和风险约束。
 11. 对 `/team-build elevate` 读取 `docs/skill-evolution-methodology.md`，先运行 `scripts/audit-skills.js` 获取静态基线，再按 P0/P1/P2 优先级实施最小改动。
@@ -58,7 +59,9 @@ execution_mode: sequential
 - 高风险领域缺少人工责任人、复核触发条件或无批准阻断：阻断生成。
 - 缺少领域内容或验收场景：允许生成草案，但不得评为 A 级；需列为高优先级升级项。
 - 声明 external skills 但缺少 adapters：不得评为 A 级，需补充输入输出、授权、降级和验证命令。
-- 验收场景失败：阻断交付，先补齐缺失产物、门禁、失败样例或风险文案。
+- 静态 acceptance contract 失败：阻断交付，先补齐缺失产物、门禁、失败样例或风险文案。
+- execution acceptance 失败：保留 V0/待验边界；不得用静态契约通过替代场景执行。
+- 治理评估不为 ready：终态 claim 保持 pending/candidate，补齐契约、授权、检查、运行证据或适用审批。
 - 规格校验失败：返回失败项，不进入 Generate 阶段。
 - 生成物校验失败：返回失败项、影响和修复建议。
 - 评分低于 80 分：允许交付但必须列出优先升级项；低于 70 分时建议不要作为正式团队 Skill 使用。

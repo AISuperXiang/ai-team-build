@@ -19,6 +19,7 @@ const { renderScoreMarkdown, scoreSpec } = require("./score-team-spec");
 const { REQUIRED_COMMAND_FIELDS } = require("./command-contract");
 const generationPlan = require("./generation-plan");
 const templateEngine = require("./template-engine");
+const { version: GENERATOR_VERSION } = require("../package.json");
 
 const DEFAULT_SKILLS_ROOT = process.env.AI_TEAM_BUILD_SKILLS_ROOT || path.resolve(__dirname, "..", "..");
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -139,6 +140,39 @@ function safeJoin(root, relativePath) {
   return path.join(root, normalized);
 }
 
+function renderGeneratedAgents(spec) {
+  return `# AGENTS.md
+
+本文件定义维护和运行 \`${spec.skill.id}\` 时必须遵守的项目级规则。
+
+## 修改边界
+
+- 角色、命令、工作流、模板、Schema 或运行时契约变化时，必须同步更新权威规格和生成器。
+- 仓库专属文件和真实任务证据不得被生成器覆盖；先生成到临时目录，再按差异同步。
+- 不得删除或改写用户已有的 workspace、Git 元数据或未提交变更。
+
+## 执行与证据
+
+- 执行前建立 \`rolePlan\`；产物负责人和必过门禁负责人不得为 \`not_applicable\`。
+- 核心证据记录来源、数据截止时间、获取时间、时区和精确定位。
+- 动态数据保存在当前任务的 \`evidence/\` 中，或记录可验证的内容哈希。
+- 计算结果记录公式、参数、输入样本、实现版本和允许误差。
+
+## 验证与人工复核
+
+- \`verificationLevel\` 只表示流程验证，并必须等于 \`verificationScopes.workflow\`。
+- 数据、事实、流程、结果和个性化能力分别评级，不得跨维度借用证据。
+- 人工批准必须记录 \`reviewerType=human\`、复核人、时间和证据；Agent 自审不能满足人工门禁。
+- 没有真人批准时可以交付草稿，但不得声明最终放行。
+- 终态前运行：
+
+\`\`\`bash
+npm test
+node scripts/validate-workspace.js --status workspace/<task>/workflow-status.json --require-ready --min-score 90
+\`\`\`
+`;
+}
+
 function renderGeneratedSkillMd(spec) {
   const commandRows = spec.commands.items.map((command) => tableRow([
     `\`${commandUsage(spec, command)}\``,
@@ -212,6 +246,17 @@ ${memberRows}
 | --- | --- | --- | --- |
 ${workflowRows}
 
+## 最小加载矩阵
+
+| 当前任务 | 必读 | 按需读取 |
+| --- | --- | --- |
+| 路由与输入澄清 | \`commands/${commandFileName(spec.commands.prefix)}.md\`、\`workflows/route-table.md\` | 候选工作流文件 |
+| 执行工作流 | 目标工作流、\`workflows/execution-protocol.md\` | 当前阶段的 \`active\` / \`consulted\` 成员文件 |
+| 质量与风险复核 | \`docs/quality-gates.md\`、\`docs/verification-methodology.md\` | 相关方法论、数据契约和模板 |
+| 外部能力调用 | \`external-skills/adapters.json\`、\`external-skills/install-policy.md\` | 角色映射与外部 CLI 说明 |
+
+只按需读取当前工作流和阶段所需文件，不一次性加载全部成员、文档或模板。
+
 ## 执行循环
 
 1. Intake：理解目标、输入、成功标准、风险边界和信息缺口。
@@ -219,11 +264,13 @@ ${workflowRows}
 3. Profile：读取 \`docs/execution-methodology.md\`，选择 \`lightweight\`、\`standard\` 或 \`assurance\`，并按 \`S/M/L/XL\` 分级。
 4. Activate Roles：按 \`docs/role-activation-methodology.md\` 形成 \`rolePlan\`，只加载 \`active\` 或 \`consulted\` 角色。
 5. Load：只加载当前工作流、当前阶段角色、质量门禁和模板。
-6. Workspace：交付类任务创建独立 workspace，记录决策、风险、交接和证据。
-7. Execute：按阶段产出结论、证据、风险和需决策项。
-8. Verify：按 \`docs/verification-methodology.md\` 映射 \`V0-V4\`；结论不得超过证据等级。
-9. Score：读取 \`evaluation-report.md\`，结合评分短板给出升级建议。
-10. Deliver：输出最终结论、证据索引、评分、风险和下一步建议。
+6. Govern：登记有效契约、授权 invocation、required checks 和人工审批策略。
+7. Workspace：交付类任务创建独立 workspace，记录决策、风险、交接和证据。
+8. Execute：按阶段产出结论、证据、风险和需决策项。
+9. Verify：结构化记录 assertion、runner、wrapper 和执行数量，并映射 \`V0-V4\`。
+10. Assess：使用 \`scripts/assess-governance.js\` 派生 readiness，禁止手填终态通过。
+11. Score：读取 \`evaluation-report.md\`，结合评分短板给出升级建议。
+12. Deliver：输出最终结论、证据索引、评分、风险和下一步建议。
 
 ## 风险控制
 
@@ -248,7 +295,7 @@ ${markdownList(spec.riskControls.evidenceRules)}
 - 采用的工作流。
 - 参与角色。
 - 角色激活计划、实际贡献和不适用依据。
-- 复杂度、执行档位、当前验证等级和结论边界。
+- 复杂度、执行档位、数据/事实/流程/策略结果/个性化验证等级和结论边界。
 - 已完成产出。
 - 证据、数据来源或验证结果。
 - 价值假设、指标基线、目标、数据来源和复盘计划。
@@ -350,7 +397,13 @@ ${markdownList(spec.riskControls.blockedClaims)}
 
 \`\`\`bash
 npm test
+npm run acceptance:contracts
+npm run acceptance:execution -- --results workspace/acceptance-results.json
+node scripts/assess-governance.js --status workspace/<task>/workflow-status.json --require-ready
+node scripts/validate-workspace.js --status workspace/<task>/workflow-status.json --require-ready --min-score 90
 \`\`\`
+
+\`acceptance:contracts\` 只证明生成契约完整；\`acceptance:execution\` 才核对场景执行结果。
 
 ## 文档职责
 
@@ -422,7 +475,14 @@ See [evaluation-report.md](evaluation-report.md) for the total score, grade, dim
 
 \`\`\`bash
 npm test
+npm run acceptance:contracts
+npm run acceptance:execution -- --results workspace/acceptance-results.json
+node scripts/assess-governance.js --status workspace/<task>/workflow-status.json --require-ready
+node scripts/validate-workspace.js --status workspace/<task>/workflow-status.json --require-ready --min-score 90
 \`\`\`
+
+\`acceptance:contracts\` proves generated-contract completeness only. Use
+\`acceptance:execution\` to validate observed scenario results.
 
 ## Document Responsibilities
 
@@ -641,11 +701,13 @@ function renderExecutionProtocol(spec) {
 3. Profile：读取 \`docs/execution-methodology.md\`，确定复杂度、执行档位和目标验证等级。
 4. Activate Roles：只加载 \`active\` / \`consulted\` 角色；\`not_applicable\` 角色记录依据后不生成形式化产物。
 5. Load：只加载当前阶段需要的成员文件、模板和门禁。
-6. Workspace：创建独立任务目录，落盘 decision、risk、handoff、status 和 evidence。
-7. Execute：按阶段推进；实现写入默认由一个负责人拥有，并行评审必须冻结输入和写入边界。
-8. Verify：按 \`docs/verification-methodology.md\` 将证据映射为 \`V0-V4\`。
-9. Score：不适用维度标记 \`N/A\`；评分不得抬高验证结论。
-10. Deliver：输出结论、证据、档位、验证等级、价值、决策、风险和下一步。
+6. Govern：在 \`governanceControl\` 中登记契约、授权、invocation、检查和审批策略。
+7. Workspace：创建独立任务目录，落盘 decision、risk、handoff、status 和 evidence。
+8. Execute：按阶段推进；实现写入默认由一个负责人拥有，并行评审必须冻结输入和写入边界。
+9. Verify：结构化记录 assertion、runner、wrapper 和执行数量，并映射为 \`V0-V4\`。
+10. Assess：运行 \`scripts/assess-governance.js --status <workflow-status.json> --require-ready\`。
+11. Score：不适用维度标记 \`N/A\`；评分不得抬高验证结论。
+12. Deliver：输出结论、证据、档位、验证等级、价值、决策、风险和下一步。
 
 ## 停止条件
 
@@ -653,6 +715,7 @@ function renderExecutionProtocol(spec) {
 - 高风险结论缺少人工责任人、证据或批准。
 - 当前证据不足以支撑目标验证等级。
 - 角色或并行写入责任发生冲突且尚未裁决。
+- 终态 claim 与治理评估器派生的 readiness 不一致。
 
 ## 风险要求
 
@@ -738,6 +801,9 @@ function renderDocsReadme(spec) {
 - \`capability-matrix.md\`
 - \`acceptance-scenarios.md\`
 - \`integrations/data-contracts.md\`
+
+运行治理由 \`scripts/governance-core.js\` 与 \`scripts/assess-governance.js\` 提供。
+验收分为静态 \`contracts\` 和结构化结果驱动的 \`execution\`，两者不得混写结论。
 
 ## 风险边界
 
@@ -851,6 +917,9 @@ function renderVerificationMethodology(spec) {
 - 每个“完成、通过、可交付、收益可观测”结论必须绑定证据索引。
 - 无法验证时降低结论，并记录原因、影响、未覆盖范围和下一步。
 - 高风险输出必须满足人工复核要求，自动化证据不能替代法定或持牌责任。
+- 静态 acceptance contracts 只证明生成契约完整；执行验收必须绑定场景输入、产物哈希、门禁、反例断言和 assertion/runner/wrapper 结果。
+- \`executed=0\`、runner/wrapper 失败或 unknown 不得关闭 required check。
+- \`verificationLevel\` 仅代表流程验证，并必须等于 \`verificationScopes.workflow\`；数据、事实、策略结果和个性化能力分别评级。
 `;
 }
 
@@ -889,11 +958,22 @@ ${markdownList(spec.docs.qualityGates)}
 
 ## verification-gate
 
-- \`verificationLevel\` 与证据类型一致，结论不得超过 \`V0-V4\` 上限。
+- \`verificationLevel\` 仅代表流程验证，并必须等于 \`verificationScopes.workflow\`。
+- 数据、事实、策略结果和个性化能力分别评级；任一维度不得借用其他维度的证据升级。
+
+## governance-readiness-gate
+
+- 终态 claim 必须由确认契约、获授权 invocation、全部 required checks、可信运行结果和适用人工审批共同支持。
+- readiness 只由 \`scripts/assess-governance.js\` 派生，不写回状态作为第二事实源。
+
+## execution-acceptance-gate
+
+- \`acceptance:contracts\` 只校验静态契约；\`acceptance:execution\` 必须读取结构化场景结果。
+- 场景遗漏、角色分区不完整、产物哈希不符、门禁/反例断言缺失或零执行均失败。
 
 ## human-review-gate
 
-- 人工复核要求：${governance.humanReview.required ? `必须由 \`${governance.humanReview.accountableRole}\` 复核，无批准不得交付。` : "仅在风险触发时升级。"}
+- 人工复核要求：${governance.humanReview.required ? `由 \`${governance.humanReview.accountableRole}\` 承担责任，但必须记录 \`reviewerType=human\`、复核人、时间和证据；Agent 角色自审不得冒充人工批准。` : "仅在风险触发时升级。"}
 
 ## 风险声明
 
@@ -1023,7 +1103,9 @@ function renderHandoffContract() {
 
 function renderWorkflowStatus(spec) {
   const governance = resolveGovernance(spec);
+  const humanReviewPolicy = spec.riskControls.humanReview || governance.humanReview;
   const stages = spec.workflows.flatMap((workflow) => workflow.stages.map((stage) => ({
+    workflowId: workflow.id,
     name: `${workflow.title} / ${stage.name}`,
     owner: stage.owner,
     status: "pending",
@@ -1037,11 +1119,39 @@ function renderWorkflowStatus(spec) {
     complexityLevel: governance.defaultComplexityLevel,
     executionProfile: governance.defaultExecutionProfile,
     verificationLevel: "V0",
+    verificationScopes: {
+      data: "V0",
+      facts: "V0",
+      workflow: "V0",
+      strategyOutcome: "V0",
+      personalization: "V0"
+    },
     targetVerificationLevel: governance.targetVerificationLevel,
     currentStage: "",
     blockers: [],
     uncoveredRisks: [],
     updatedAt: "",
+    governanceControl: {
+      schemaVersion: "1.0",
+      taskId: "",
+      authorizedActions: [],
+      activeContractRevision: null,
+      currentInvocationId: null,
+      humanReviewPolicy: {
+        required: Boolean(humanReviewPolicy.required),
+        accountableRole: humanReviewPolicy.accountableRole || "",
+        requiredReviewerType: "human",
+        blockedWithoutApproval: Boolean(humanReviewPolicy.blockedWithoutApproval)
+      },
+      contracts: [],
+      checks: [],
+      invocations: [],
+      verificationRuns: [],
+      approvals: [],
+      completion: {
+        claim: "pending"
+      }
+    },
     rolePlan: spec.members.map((member) => ({
       role: member.id,
       mode: "not_applicable",
@@ -1049,6 +1159,15 @@ function renderWorkflowStatus(spec) {
       stages: []
     })),
     stages
+  };
+}
+
+function renderAcceptanceResultsTemplate(spec) {
+  return {
+    schemaVersion: "1.0",
+    skillId: spec.skill.id,
+    generatorVersion: GENERATOR_VERSION,
+    runs: []
   };
 }
 
@@ -1113,9 +1232,12 @@ workspace/
         └── README.md
 \`\`\`
 
-- \`workflow-status.json\` 必须记录复杂度、执行档位、当前/目标验证等级、\`rolePlan\`、阻塞和未覆盖风险。
+- \`workflow-status.json\` 必须记录复杂度、执行档位、当前/目标验证等级、\`rolePlan\`、阻塞、未覆盖风险和 \`governanceControl\`。
 - 每次阶段切换更新 \`role-handoff.md\`；关键取舍写入 \`decision-log.md\`。
 - \`evidence/\` 只保存命令、日志、数据来源、截图说明或人工验收记录，不保存凭据。
+- 终态前运行 \`scripts/validate-workspace.js --status <relative-status> --require-ready --min-score 90\`。
+- 执行验收使用 \`assets/templates/acceptance-results.json\` 建立结果文件，再运行 \`acceptance:execution\`；模板和静态文字不能冒充执行产物。
+- 人工批准必须记录 \`reviewerType=human\`、复核人、时间和证据；Agent 角色自审不能满足人工门禁。
 `;
 }
 
@@ -1311,11 +1433,13 @@ function renderStatusSchema(title) {
     "complexityLevel",
     "executionProfile",
     "verificationLevel",
+    "verificationScopes",
     "targetVerificationLevel",
     "currentStage",
     "blockers",
     "uncoveredRisks",
     "updatedAt",
+    "governanceControl",
     "rolePlan",
     "stages"
   ], {
@@ -1324,11 +1448,183 @@ function renderStatusSchema(title) {
     complexityLevel: { type: "string", enum: ["S", "M", "L", "XL"] },
     executionProfile: { type: "string", enum: ["lightweight", "standard", "assurance"] },
     verificationLevel: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+    verificationScopes: {
+      type: "object",
+      additionalProperties: false,
+      required: ["data", "facts", "workflow", "strategyOutcome", "personalization"],
+      properties: {
+        data: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+        facts: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+        workflow: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+        strategyOutcome: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+        personalization: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] }
+      }
+    },
     targetVerificationLevel: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
     currentStage: { type: "string" },
     blockers: { type: "array", items: { type: "string" } },
     uncoveredRisks: { type: "array", items: { type: "string" } },
     updatedAt: { type: "string" },
+    governanceControl: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "schemaVersion",
+        "taskId",
+        "authorizedActions",
+        "activeContractRevision",
+        "currentInvocationId",
+        "humanReviewPolicy",
+        "contracts",
+        "checks",
+        "invocations",
+        "verificationRuns",
+        "approvals",
+        "completion"
+      ],
+      properties: {
+        schemaVersion: { const: "1.0" },
+        taskId: { type: "string" },
+        authorizedActions: {
+          type: "array",
+          uniqueItems: true,
+          items: { type: "string", minLength: 1 }
+        },
+        activeContractRevision: { type: ["string", "null"] },
+        currentInvocationId: { type: ["string", "null"] },
+        humanReviewPolicy: {
+          type: "object",
+          additionalProperties: false,
+          required: ["required", "accountableRole", "requiredReviewerType", "blockedWithoutApproval"],
+          properties: {
+            required: { type: "boolean" },
+            accountableRole: { type: "string" },
+            requiredReviewerType: { const: "human" },
+            blockedWithoutApproval: { type: "boolean" }
+          }
+        },
+        contracts: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["revision", "status", "sourceRef", "checkIds"],
+            properties: {
+              revision: { type: "string", minLength: 1 },
+              status: { type: "string", enum: ["draft", "confirmed", "conflicted"] },
+              sourceRef: { type: "string", minLength: 1 },
+              checkIds: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }
+            }
+          }
+        },
+        checks: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["id", "required", "minimumVerificationLevel", "evidenceRunIds"],
+            properties: {
+              id: { type: "string", minLength: 1 },
+              required: { type: "boolean" },
+              minimumVerificationLevel: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+              evidenceRunIds: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }
+            }
+          }
+        },
+        invocations: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["id", "operation", "allowedActions", "authorizationRef", "previousInvocationId"],
+            properties: {
+              id: { type: "string", minLength: 1 },
+              operation: { type: "string", enum: ["start", "resume", "verify", "review", "deliver"] },
+              allowedActions: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } },
+              authorizationRef: { type: "string", minLength: 1 },
+              previousInvocationId: { type: ["string", "null"] }
+            }
+          }
+        },
+        verificationRuns: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["id", "invocationId", "checkIds", "verificationLevel", "result", "evidenceRefs"],
+            properties: {
+              id: { type: "string", minLength: 1 },
+              invocationId: { type: "string", minLength: 1 },
+              checkIds: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } },
+              verificationLevel: { type: "string", enum: ["V0", "V1", "V2", "V3", "V4"] },
+              result: {
+                type: "object",
+                additionalProperties: false,
+                required: ["assertion", "executed", "runner", "wrapper"],
+                properties: {
+                  assertion: { type: "string", enum: ["pass", "fail", "not_run", "unknown"] },
+                  executed: { type: "integer", minimum: 0 },
+                  runner: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["status", "exitCode"],
+                    properties: {
+                      status: { type: "string", enum: ["passed", "failed", "not_applicable", "unknown"] },
+                      exitCode: { type: ["integer", "null"] }
+                    }
+                  },
+                  wrapper: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["status", "exitCode"],
+                    properties: {
+                      status: { type: "string", enum: ["passed", "failed", "not_applicable", "unknown"] },
+                      exitCode: { type: ["integer", "null"] }
+                    }
+                  }
+                }
+              },
+              evidenceRefs: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }
+            }
+          }
+        },
+        approvals: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "id",
+              "contractRevision",
+              "role",
+              "reviewerType",
+              "reviewerId",
+              "status",
+              "evidenceRef",
+              "reviewedAt"
+            ],
+            properties: {
+              id: { type: "string", minLength: 1 },
+              contractRevision: { type: "string", minLength: 1 },
+              role: { type: "string", minLength: 1 },
+              reviewerType: { const: "human" },
+              reviewerId: { type: "string", minLength: 1 },
+              status: { type: "string", enum: ["approved", "rejected"] },
+              evidenceRef: { type: "string", minLength: 1 },
+              reviewedAt: { type: "string", format: "date-time" }
+            }
+          }
+        },
+        completion: {
+          type: "object",
+          additionalProperties: false,
+          required: ["claim"],
+          properties: {
+            claim: { type: "string", enum: ["pending", "candidate", "accepted", "analysis_complete"] }
+          }
+        }
+      }
+    },
     rolePlan: {
       type: "array",
       minItems: 1,
@@ -1348,8 +1644,9 @@ function renderStatusSchema(title) {
       type: "array",
       items: {
         type: "object",
-        required: ["name", "owner", "status", "gates", "artifacts", "evidence"],
+        required: ["workflowId", "name", "owner", "status", "gates", "artifacts", "evidence"],
         properties: {
+          workflowId: { type: "string", minLength: 1 },
           name: { type: "string", minLength: 1 },
           owner: { type: "string", minLength: 1 },
           status: { type: "string", enum: ["pending", "in_progress", "blocked", "review", "completed"] },
@@ -1389,6 +1686,8 @@ function renderGeneratedValidateStructureScript(spec) {
   const commandFile = `commands/${commandFileName(spec.commands.prefix)}.md`;
   const expectedFiles = [
     "SKILL.md",
+    "AGENTS.md",
+    ".npmignore",
     "README.md",
     "README_EN.md",
     "evaluation-report.md",
@@ -1407,6 +1706,8 @@ function renderGeneratedValidateStructureScript(spec) {
     "docs/capability-matrix.md",
     "docs/acceptance-scenarios.md",
     "docs/integrations/data-contracts.md",
+    "assets/templates/workflow-status.json",
+    "assets/templates/acceptance-results.json",
     ...generationPlan.CORE_GOVERNANCE_TEMPLATE_FILES,
     "members/README.md",
     "workflows/README.md",
@@ -1420,6 +1721,9 @@ function renderGeneratedValidateStructureScript(spec) {
     "external-cli/README.md",
     "workspace/README.md",
     "scripts/run-acceptance-scenarios.js",
+    "scripts/governance-core.js",
+    "scripts/assess-governance.js",
+    "scripts/validate-workspace.js",
     "generation-report.json",
     ...expectedMembers,
     ...expectedWorkflows
@@ -1471,6 +1775,7 @@ function renderGeneratedValidateContractsScript(spec) {
   return `#!/usr/bin/env node
 const fs = require("fs");
 const path = require("path");
+const { assessGovernanceState } = require("./governance-core");
 const ROOT = path.resolve(__dirname, "..");
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage"]);
 const riskControls = ${json(spec.riskControls)};
@@ -1590,6 +1895,7 @@ const workflowStatus = parseJson("assets/templates/workflow-status.json");
 const rolePlan = workflowStatus && workflowStatus.rolePlan;
 record(["lightweight", "standard", "assurance"].includes(workflowStatus && workflowStatus.executionProfile), "workflow-status has valid executionProfile");
 record(/^V[0-4]$/.test(String(workflowStatus && workflowStatus.verificationLevel)), "workflow-status has valid verificationLevel");
+record(Boolean(workflowStatus && workflowStatus.verificationScopes), "workflow-status has verificationScopes");
 record(/^V[0-4]$/.test(String(workflowStatus && workflowStatus.targetVerificationLevel)), "workflow-status has valid targetVerificationLevel");
 record(Array.isArray(rolePlan) && rolePlan.length === memberIds.length, "workflow-status rolePlan covers every member");
 for (const item of rolePlan || []) {
@@ -1598,6 +1904,9 @@ for (const item of rolePlan || []) {
   record(Boolean(item.reason), "workflow-status rolePlan has a reason: " + (item.role || "unknown"));
   record(Array.isArray(item.stages), "workflow-status rolePlan stages is an array: " + (item.role || "unknown"));
 }
+const governanceAssessment = assessGovernanceState(workflowStatus);
+record(governanceAssessment.valid, "workflow-status governance control is structurally valid");
+record(governanceAssessment.readiness === "review", "initial workflow-status governance readiness is review");
 const allRiskText = [skill, read("docs/quality-gates.md"), read("docs/quality-rubrics.md")].join("\\n");
 for (const item of riskControls.requiredDisclaimers || []) record(allRiskText.includes(item), "risk disclaimer present: " + item);
 for (const item of riskControls.blockedClaims || []) record(allRiskText.includes(item), "blocked claim present: " + item);
@@ -1641,6 +1950,7 @@ for (const schemaFile of [
     record(Boolean(schema && schema.properties && schema.properties.rolePlan), "status schema defines rolePlan");
     record(Array.isArray(schema && schema.required) && schema.required.includes("executionProfile"), "status schema requires executionProfile");
     record(Array.isArray(schema && schema.required) && schema.required.includes("verificationLevel"), "status schema requires verificationLevel");
+    record(Array.isArray(schema && schema.required) && schema.required.includes("verificationScopes"), "status schema requires verificationScopes");
   }
   if (schemaFile === "schemas/skill-runtime.schema.json") {
     const agentHints = schema && schema.properties && schema.properties.agentHints;
@@ -1746,10 +2056,14 @@ function renderPackageJson(spec) {
       validate: "node scripts/validate-structure.js",
       "validate:structure": "node scripts/validate-structure.js",
       "validate:contracts": "node scripts/validate-contracts.js",
-      acceptance: "node scripts/run-acceptance-scenarios.js .",
+      "validate:governance": "node scripts/assess-governance.js --status assets/templates/workflow-status.json",
+      "validate:workspace": "node scripts/validate-workspace.js",
+      acceptance: "npm run acceptance:contracts",
+      "acceptance:contracts": "node scripts/run-acceptance-scenarios.js . --mode contracts",
+      "acceptance:execution": "node scripts/run-acceptance-scenarios.js . --mode execution",
       "skills:list": "node scripts/list-external-skills.js",
       "skills:install": "node scripts/install-external-skills.js",
-      test: "npm run validate:structure && npm run validate:contracts && npm run acceptance"
+      test: "npm run validate:structure && npm run validate:contracts && npm run validate:governance && npm run acceptance:contracts"
     },
     license: "MIT"
   };
@@ -1785,6 +2099,7 @@ function renderRuntime(spec, commandFile) {
       postInstall: ["npm test"],
       requiredFiles: [
         "SKILL.md",
+        "AGENTS.md",
         "README.md",
         "README_EN.md",
         "evaluation-report.md",
@@ -1830,9 +2145,9 @@ function renderRuntime(spec, commandFile) {
         "docs/verification-methodology.md"
       ],
       environmentPolicy: "Run Node scripts from the skill root. Core workflows must not require credentials or external services.",
-      executionPolicy: "Select complexity, executionProfile, rolePlan, and target verification level before execution. Conclusions must not exceed evidence-backed V0-V4.",
+      executionPolicy: "Select complexity, executionProfile, rolePlan, and target verification level before execution. Terminal claims require a confirmed contract, authorized invocation, required checks, trustworthy execution results, and any required approval.",
       roleActivationPolicy: "Treat workflow members as a candidate pool. Record active, consulted, or not_applicable participation with scenario evidence in workflow-status.json.rolePlan before loading role details.",
-      verificationPolicy: "Factory validation proves generated contracts at V2. Real domain capability starts at V0 and only advances with task-specific evidence; blueprint grade does not certify business outcomes.",
+      verificationPolicy: "Factory contract validation is V2. Execution acceptance requires a structured scenario result envelope with input binding, artifacts, gates, failure assertions, and separate assertion/runner/wrapper outcomes. Real domain capability starts at V0.",
       externalSkillPolicy: "Only install external skills from external-skills/catalog.json after explicit user instruction or approval."
     },
     privacy: {
@@ -1871,6 +2186,8 @@ function writeGeneratedSkill(spec, outputDir, options) {
   const writeRelativeJson = (relativePath, value) => writeJson(safeJoin(outputDir, relativePath), value);
 
   writeRelative("SKILL.md", renderGeneratedSkillMd(spec));
+  writeRelative("AGENTS.md", renderGeneratedAgents(spec));
+  writeRelative(".npmignore", "workspace/*/\n.tmp/\nnode_modules/\n");
   writeRelative("README.md", renderGeneratedReadme(spec));
   writeRelative("README_EN.md", renderGeneratedReadmeEn(spec));
   writeRelative("evaluation-report.md", renderScoreMarkdown(spec, score));
@@ -1920,6 +2237,7 @@ function writeGeneratedSkill(spec, outputDir, options) {
     writeRelative(generationPlan.relativeTemplatePath(template), templateEngine.renderTemplateArtifact(template));
   }
   writeRelativeJson("assets/templates/workflow-status.json", renderWorkflowStatus(spec));
+  writeRelativeJson("assets/templates/acceptance-results.json", renderAcceptanceResultsTemplate(spec));
 
   writeRelative("external-skills/README.md", renderExternalSkillsReadme(spec));
   writeRelativeJson("external-skills/catalog.json", {
@@ -1945,6 +2263,9 @@ function writeGeneratedSkill(spec, outputDir, options) {
 
   writeRelative("scripts/validate-structure.js", renderGeneratedValidateStructureScript(spec));
   writeRelative("scripts/validate-contracts.js", renderGeneratedValidateContractsScript(spec));
+  writeRelative("scripts/governance-core.js", fs.readFileSync(path.join(__dirname, "governance-core.js"), "utf8"));
+  writeRelative("scripts/assess-governance.js", fs.readFileSync(path.join(__dirname, "assess-governance.js"), "utf8"));
+  writeRelative("scripts/validate-workspace.js", fs.readFileSync(path.join(__dirname, "validate-workspace.js"), "utf8"));
   writeRelative("scripts/run-acceptance-scenarios.js", fs.readFileSync(path.join(__dirname, "run-acceptance-scenarios.js"), "utf8"));
   writeRelative("scripts/list-external-skills.js", renderListExternalSkillsScript(spec));
   writeRelative("scripts/install-external-skills.js", renderInstallExternalSkillsScript(spec));
@@ -1954,6 +2275,7 @@ function writeGeneratedSkill(spec, outputDir, options) {
 
   const report = {
     generator: "ai-team-build",
+    generatorVersion: GENERATOR_VERSION,
     generatedAt: new Date().toISOString(),
     specSource: portablePath(options.specPath),
     outputPath: portablePath(outputDir),
@@ -1962,9 +2284,12 @@ function writeGeneratedSkill(spec, outputDir, options) {
     commandFile,
     counts: generationPlan.generationCounts(spec),
     evaluation: {
+      scoreType: "blueprint-contract",
       totalScore: score.totalScore,
       grade: score.grade,
       gradeScore: score.gradeScore,
+      runtimeScore: null,
+      outcomeScore: null,
       gradeBlockers: score.gradeBlockers,
       reportPath: "evaluation-report.md",
       decisionAdvice: score.decisionAdvice,
@@ -1975,6 +2300,11 @@ function writeGeneratedSkill(spec, outputDir, options) {
     governance: resolveGovernance(spec),
     teamContract: {
       memberIds: spec.members.map((member) => member.id),
+      roleContracts: spec.members.map((member) => ({
+        id: member.id,
+        primaryOutputs: member.primary_outputs,
+        qualityGates: member.quality_gates
+      })),
       workflows: spec.workflows.map((workflow) => ({
         id: workflow.id,
         candidateMembers: workflow.members,
@@ -1987,7 +2317,9 @@ function writeGeneratedSkill(spec, outputDir, options) {
       factoryVerificationLevel: "V2",
       generatedTeamVerificationLevel: "V0",
       targetVerificationLevel: resolveGovernance(spec).targetVerificationLevel,
-      boundary: "Factory tests validate generated contracts; they do not validate real domain outcomes."
+      governanceContractVersion: "1.0",
+      acceptanceModes: ["contracts", "execution"],
+      boundary: "Factory tests validate generated contracts and harness behavior; they do not validate real domain outcomes."
     },
     acceptanceScenarios: spec.acceptanceScenarios || [],
     dataContracts: spec.dataContracts || [],

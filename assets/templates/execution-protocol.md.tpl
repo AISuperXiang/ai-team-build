@@ -5,11 +5,13 @@
 3. Profile
 4. Activate Roles
 5. Load
-6. Workspace
-7. Execute
-8. Verify
-9. Score
-10. Deliver
+6. Govern
+7. Workspace
+8. Execute
+9. Verify by scope
+10. Assess
+11. Score
+12. Deliver
 
 ## Execution Profiles
 
@@ -23,3 +25,5 @@
 - 证据不足以支撑目标验证等级。
 - 高风险任务缺少人工责任或批准。
 - 并行写入或角色责任冲突尚未裁决。
+- 终态 claim 与 `scripts/assess-governance.js` 派生的 readiness 不一致。
+- 人工批准没有 `reviewerType=human`、复核人、时间或证据。

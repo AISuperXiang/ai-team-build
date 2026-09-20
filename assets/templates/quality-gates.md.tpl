@@ -11,8 +11,13 @@
 - complexity-gate
 - evidence-gate
 - verification-gate
+- governance-readiness-gate
+- execution-acceptance-gate
 - human-review-gate
 - delivery-gate
+
+Human approval requires a real person recorded with `reviewerType=human`, reviewer identity,
+review time, scope, and evidence. An Agent role review cannot satisfy this gate.
 
 ## 风险控制
 

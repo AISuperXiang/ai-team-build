@@ -127,6 +127,18 @@ npm run generate -- \
 
 ```bash
 npm run validate:generated -- <skills-root>/product-rd-team
+node <skills-root>/product-rd-team/scripts/run-acceptance-scenarios.js \
+  <skills-root>/product-rd-team --mode contracts
+```
+
+`contracts` 只校验静态生成契约。真实场景执行后，使用生成物中的
+`assets/templates/acceptance-results.json` 建立结果文件，再执行：
+
+```bash
+node <skills-root>/product-rd-team/scripts/run-acceptance-scenarios.js \
+  <skills-root>/product-rd-team \
+  --mode execution \
+  --results workspace/acceptance-results.json
 ```
 
 ### 审计已有 Skill
@@ -307,11 +319,11 @@ Audit
 | `docs/capability-matrix.md` | 团队能力矩阵 |
 | `docs/acceptance-scenarios.md` | golden 验收场景 |
 | `docs/integrations/data-contracts.md` | 数据来源、时效、缺失处理和允许用途 |
-| `assets/templates/` | 决策、风险、交接、证据和交付模板 |
+| `assets/templates/` | 决策、风险、交接、证据、执行验收结果和交付模板 |
 | `external-skills/adapters.json` | 外部能力授权、输入输出、降级和验证方式 |
 | `evaluation-report.md` | 团队评分、短板和能力升级方向 |
-| `generation-report.json` | 生成计划、文件清单、风险控制和验收索引 |
-| `scripts/` | 结构、契约、验收和辅助脚本 |
+| `generation-report.json` | 生成器名称与版本、生成计划、文件清单、风险控制和验收索引 |
+| `scripts/` | 结构、契约、治理 readiness、真实 workspace、执行验收和辅助脚本 |
 
 ## 质量门禁
 
@@ -322,8 +334,11 @@ Audit
 - 声明 external skills 时，必须提供 Capability Adapter 的输入、输出、授权、降级和验证命令。
 - `generic-draft` 只能作为待复核草案，不能评为 A 级。
 - 高风险领域必须包含免责声明、禁止性承诺、证据规则、置信度和失效条件。
-- 高风险领域必须指定人工责任人，并在无批准时阻断交付或不可逆操作。
-- 生成物必须通过结构校验、契约校验、评分和验收场景。
+- 高风险领域必须指定人工责任人，并在无批准时阻断交付或不可逆操作；Agent 自审不能冒充真人批准。
+- 生成物必须通过结构校验、契约校验、治理状态校验和静态 acceptance contracts。
+- 场景执行验收必须绑定输入摘要、完整 rolePlan、workspace 产物哈希、门禁、反例断言和 assertion/runner/wrapper；零执行或未知结果不得通过。
+- 终态 claim 必须由确认契约、获授权 invocation、required checks 和适用人工审批共同支持。
+- `verificationLevel` 仅代表流程验证；数据、事实、流程、策略结果和个性化能力分别评级。
 - 生成物必须同时包含互相链接的 `README.md` 与 `README_EN.md`；生成器保持离线，不调用在线翻译。
 - 每个候选成员都必须进入 `rolePlan`，仅加载实际参与角色，并为 N/A 保留依据。
 - A 级代表蓝图和契约质量，不代表真实业务能力或结果已经验证。
